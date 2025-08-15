@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       // الشحنات النشطة
       prisma.shipment.count({
         where: {
-          status: { in: ['pending', 'in_transit', 'at_port'] }
+          status: { in: ['PENDING', 'IN_TRANSIT'] }
         }
       }),
       
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       // معدل الأداء (محسوب من الشحنات المكتملة)
       prisma.shipment.count({
         where: {
-          status: 'delivered',
+          status: 'DELIVERED',
           createdAt: { gte: startDate }
         }
       }).then(delivered => 

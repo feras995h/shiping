@@ -65,8 +65,12 @@ export async function POST(request: NextRequest) {
 
     const evaluation = await prisma.evaluation.create({
       data: {
-        ...validatedData,
-        evaluatorId: 'user-id', // سيتم استبداله بـ user ID الفعلي
+        employeeId: validatedData.employeeId,
+        evaluatorId: validatedData.evaluatorId,
+        score: validatedData.score,
+        comments: validatedData.comments,
+        evaluationDate: validatedData.evaluationDate,
+        createdBy: 'system' // سيتم تحديثه لاحقاً
       },
       include: {
         employee: {

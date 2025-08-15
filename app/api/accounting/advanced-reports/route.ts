@@ -159,9 +159,9 @@ export const GET = withRole(['ADMIN', 'MANAGER'])(async (request: NextRequest) =
         const trendsAnalysis = await advancedAccounting.analyzeTrends(periods)
         
         // حساب معدلات النمو
-        const revenueGrowth = this.calculateGrowthRate(trendsAnalysis.revenue || [])
-        const expenseGrowth = this.calculateGrowthRate(trendsAnalysis.expenses || [])
-        const profitGrowth = this.calculateGrowthRate(trendsAnalysis.profit || [])
+        const revenueGrowth = calculateGrowthRate(trendsAnalysis.revenue || [])
+        const expenseGrowth = calculateGrowthRate(trendsAnalysis.expenses || [])
+        const profitGrowth = calculateGrowthRate(trendsAnalysis.profit || [])
 
         return ApiResponseHandler.success({
           trends: trendsAnalysis,
@@ -171,9 +171,9 @@ export const GET = withRole(['ADMIN', 'MANAGER'])(async (request: NextRequest) =
             profit: profitGrowth
           },
           insights: {
-            revenueInsight: this.getTrendInsight('revenue', trendsAnalysis.trends?.revenue || 'stable', revenueGrowth),
-            expenseInsight: this.getTrendInsight('expenses', trendsAnalysis.trends?.expenses || 'stable', expenseGrowth),
-            profitInsight: this.getTrendInsight('profit', trendsAnalysis.trends?.profit || 'stable', profitGrowth)
+            revenueInsight: getTrendInsight('revenue', trendsAnalysis.trends?.revenue || 'stable', revenueGrowth),
+            expenseInsight: getTrendInsight('expenses', trendsAnalysis.trends?.expenses || 'stable', expenseGrowth),
+            profitInsight: getTrendInsight('profit', trendsAnalysis.trends?.profit || 'stable', profitGrowth)
           },
           periods
         })
@@ -188,9 +188,9 @@ export const GET = withRole(['ADMIN', 'MANAGER'])(async (request: NextRequest) =
         ])
 
         const comprehensiveAnalysis = {
-          financialHealth: this.assessFinancialHealth(ratios, cashFlow),
-          businessPerformance: this.assessBusinessPerformance(profitCentersData, trends),
-          recommendations: this.generateRecommendations(ratios, cashFlow, profitCentersData, trends)
+          financialHealth: assessFinancialHealth(ratios, cashFlow),
+          businessPerformance: assessBusinessPerformance(profitCentersData, trends),
+          recommendations: generateRecommendations(ratios, cashFlow, profitCentersData, trends)
         }
 
         return ApiResponseHandler.success({
@@ -332,7 +332,7 @@ function generateRecommendations(ratios: any[], cashFlow: any, profitCenters: an
   }
   
   // توصيات بناءً على التدفق النقدي
-  if (cashFlow.operatingActivities.netOperatingCashFlow < 0) {
+  if (cashFlow.operatingActivities?.netOperatingCashFlow < 0) {
     recommendations.push('تحسين التدفق النقدي التشغيلي من خلال تسريع التحصيل')
   }
   

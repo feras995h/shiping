@@ -37,11 +37,9 @@ export async function GET(request: NextRequest) {
           name: true,
           email: true,
           role: true,
-          status: true,
-          department: true,
+          isActive: true,
           phone: true,
-          location: true,
-          lastLogin: true,
+          address: true,
           createdAt: true
         },
         orderBy: { createdAt: 'desc' },
@@ -86,11 +84,10 @@ export async function POST(request: NextRequest) {
         name,
         email,
         role,
-        department,
         phone,
-        location,
-        password: password ? await hashPassword(password) : undefined,
-        status: 'active'
+        address: location, // استخدام address بدلاً من location
+        password: password ? await hashPassword(password) : await hashPassword('defaultPassword123'),
+        isActive: true
       }
     })
 

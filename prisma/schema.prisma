@@ -152,6 +152,16 @@ model User {
   reports       Report[]
   journalEntries JournalEntry[]
   
+  // Relations for audit and approvals
+  auditLogs     AuditLog[]
+  approvalRequests ApprovalRequest[]
+  approvalActions ApprovalAction[]
+  integrations  Integration[]
+  
+  // Relations for roles and permissions
+  roles         Role[]
+  rolePermissions RolePermission[]
+  
   sessions      Session[]
   accounts      Account[]
 
@@ -401,6 +411,7 @@ model Currency {
 
   // Relations
   glAccounts GlAccount[]
+  shipments Shipment[]
 
   @@map("currencies")
 }
@@ -986,4 +997,111 @@ model ApprovalAction {
 
   @@index([requestId])
   @@map("approval_actions")
+}
+
+// ===== نظام التكامل (Integrations) =====
+enum IntegrationType {
+  BANKING
+  SHIPPING
+  ACCOUNTING
+  CRM
+  ERP
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  CONNECTING
+}
+
+model Integration {
+  id          String           @id @default(cuid())
+  name        String
+  type        IntegrationType
+  status      IntegrationStatus @default(INACTIVE)
+  config      Json?            // إعدادات التكامل
+  apiKey      String?          // مفتاح API (مشفر)
+  apiSecret   String?          // سر API (مشفر)
+  endpoint    String?          // نقطة النهاية
+  isActive    Boolean          @default(true)
+  lastSync    DateTime?        // آخر مزامنة
+  errorCount  Int              @default(0)
+  lastError   String?          // آخر خطأ
+  createdBy   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  user        User             @relation(fields: [createdBy], references: [id])
+
+  @@index([type])
+  @@index([status])
+  @@map("integrations")
+}
+
+// ===== نظام الأدوار والصلاحيات (Roles & Permissions) =====
+enum PermissionCategory {
+  USER_MANAGEMENT
+  SHIPMENT_MANAGEMENT
+  FINANCIAL_MANAGEMENT
+  INVENTORY_MANAGEMENT
+  REPORTING
+  SYSTEM_ADMIN
+  CUSTOM
+}
+
+model Permission {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  category    PermissionCategory
+  action      String             // مثل: CREATE, READ, UPDATE, DELETE
+  resource    String             // مثل: USER, SHIPMENT, INVOICE
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  roles       RolePermission[]
+
+  @@unique([action, resource])
+  @@index([category])
+  @@map("permissions")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  isSystem    Boolean  @default(false) // الأدوار النظامية لا يمكن حذفها
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [createdBy], references: [id])
+  permissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  granted      Boolean    @default(true)
+  grantedBy    String
+  grantedAt    DateTime   @default(now())
+
+  // Relations
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [grantedBy], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
 }

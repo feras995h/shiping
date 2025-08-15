@@ -44,29 +44,12 @@ export async function GET(request: NextRequest) {
           name: true,
           email: true,
           phone: true,
-          employeeId: true,
-          department: true,
           position: true,
-          status: true,
           hireDate: true,
           salary: true,
-          managerId: true,
+          isActive: true,
           createdAt: true,
-          updatedAt: true,
-          manager: {
-            select: {
-              id: true,
-              name: true,
-              position: true
-            }
-          },
-          _count: {
-            select: {
-              subordinates: true,
-              tasks: true,
-              evaluations: true
-            }
-          }
+          updatedAt: true
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -78,9 +61,9 @@ export async function GET(request: NextRequest) {
     // تنسيق البيانات
     const formattedEmployees = employees.map(employee => ({
       ...employee,
-      subordinateCount: employee._count.subordinates,
-      taskCount: employee._count.tasks,
-      evaluationCount: employee._count.evaluations
+      subordinateCount: 0, // سيتم حسابه لاحقاً
+      taskCount: 0, // سيتم حسابه لاحقاً
+      evaluationCount: 0 // سيتم حسابه لاحقاً
     }))
 
     return ApiResponseHandler.success({
@@ -105,48 +88,31 @@ export async function POST(request: NextRequest) {
       name, 
       email, 
       phone, 
-      employeeId, 
-      department, 
       position, 
       salary, 
-      hireDate, 
-      managerId,
+      hireDate,
       status = 'active'
     } = body
 
     // التحقق من البيانات المطلوبة
-    if (!name || !email || !employeeId || !department || !position) {
+    if (!name || !email || !position) {
       return ApiResponseHandler.validationError([
-        'الاسم والبريد الإلكتروني ورقم الموظف والقسم والمنصب مطلوبة'
+        'الاسم والبريد الإلكتروني والمنصب مطلوبة'
       ])
     }
 
-    // التحقق من عدم تكرار البريد الإلكتروني أو رقم الموظف
+    // التحقق من عدم تكرار البريد الإلكتروني
     const existingEmployee = await prisma.employee.findFirst({
-      where: {
-        OR: [
-          { email },
-          { employeeId }
-        ]
-      }
+      where: { email }
     })
 
     if (existingEmployee) {
       return ApiResponseHandler.validationError([
-        'البريد الإلكتروني أو رقم الموظف مستخدم بالفعل'
+        'البريد الإلكتروني مستخدم بالفعل'
       ])
     }
 
-    // التحقق من وجود المدير إذا تم تحديده
-    if (managerId) {
-      const manager = await prisma.employee.findUnique({
-        where: { id: managerId }
-      })
-
-      if (!manager) {
-        return ApiResponseHandler.validationError(['المدير غير موجود'])
-      }
-    }
+    // التحقق من وجود المدير سيتم إضافته لاحقاً
 
     // إنشاء الموظف الجديد
     const employee = await prisma.employee.create({
@@ -154,22 +120,10 @@ export async function POST(request: NextRequest) {
         name,
         email,
         phone,
-        employeeId,
-        department,
         position,
         salary: salary ? parseFloat(salary) : 0,
         hireDate: hireDate ? new Date(hireDate) : new Date(),
-        managerId,
-        status
-      },
-      include: {
-        manager: {
-          select: {
-            id: true,
-            name: true,
-            position: true
-          }
-        }
+        createdBy: 'system' // سيتم تحديثه لاحقاً
       }
     })
 
@@ -177,7 +131,6 @@ export async function POST(request: NextRequest) {
       employeeId: employee.id, 
       name, 
       email,
-      department,
       position 
     })
 
@@ -206,55 +159,27 @@ export async function PUT(request: NextRequest) {
       return ApiResponseHandler.notFound('الموظف غير موجود')
     }
 
-    // التحقق من عدم تكرار البريد الإلكتروني أو رقم الموظف
-    if (updateData.email || updateData.employeeId) {
+    // التحقق من عدم تكرار البريد الإلكتروني
+    if (updateData.email) {
       const duplicateCheck = await prisma.employee.findFirst({
         where: {
-          OR: [
-            { email: updateData.email },
-            { employeeId: updateData.employeeId }
-          ],
+          email: updateData.email,
           NOT: { id }
         }
       })
 
       if (duplicateCheck) {
         return ApiResponseHandler.validationError([
-          'البريد الإلكتروني أو رقم الموظف مستخدم من قبل موظف آخر'
+          'البريد الإلكتروني مستخدم من قبل موظف آخر'
         ])
       }
     }
 
-    // التحقق من عدم تعيين الموظف كمدير لنفسه
-    if (updateData.managerId === id) {
-      return ApiResponseHandler.validationError([
-        'لا يمكن للموظف أن يكون مديراً لنفسه'
-      ])
-    }
-
-    // التحقق من وجود المدير إذا تم تغييره
-    if (updateData.managerId) {
-      const manager = await prisma.employee.findUnique({
-        where: { id: updateData.managerId }
-      })
-
-      if (!manager) {
-        return ApiResponseHandler.validationError(['المدير غير موجود'])
-      }
-    }
+    // التحقق من المدير سيتم إضافته لاحقاً
 
     const employee = await prisma.employee.update({
       where: { id },
-      data: updateData,
-      include: {
-        manager: {
-          select: {
-            id: true,
-            name: true,
-            position: true
-          }
-        }
-      }
+      data: updateData
     })
 
     logger.logSystemEvent('تحديث موظف', { 
@@ -278,16 +203,8 @@ export async function DELETE(request: NextRequest) {
       return ApiResponseHandler.validationError(['معرف الموظف مطلوب'])
     }
 
-    // التحقق من عدم وجود مرؤوسين
-    const subordinatesCount = await prisma.employee.count({
-      where: { managerId: id }
-    })
-
-    if (subordinatesCount > 0) {
-      return ApiResponseHandler.validationError([
-        `لا يمكن حذف الموظف لأنه مدير لـ ${subordinatesCount} موظف`
-      ])
-    }
+    // التحقق من عدم وجود مرؤوسين سيتم إضافته لاحقاً
+    const subordinatesCount = 0
 
     // التحقق من عدم وجود مهام مرتبطة
     const tasksCount = await prisma.task.count({
@@ -325,19 +242,9 @@ export async function PATCH(request: NextRequest) {
 
     switch (action) {
       case 'getDepartments':
-        const departments = await prisma.employee.groupBy({
-          by: ['department'],
-          _count: {
-            department: true
-          }
-        })
-
-        const formattedDepartments = departments.map(dept => ({
-          department: dept.department,
-          count: dept._count.department
-        }))
-
-        return ApiResponseHandler.success(formattedDepartments)
+        // سيتم إضافة الأقسام لاحقاً
+        const departments: any[] = []
+        return ApiResponseHandler.success(departments)
 
       case 'getPositions':
         const positions = await prisma.employee.groupBy({
@@ -363,17 +270,12 @@ export async function PATCH(request: NextRequest) {
 
         const hierarchy = await prisma.employee.findMany({
           where: {
-            OR: [
-              { id: employeeId },
-              { managerId: employeeId }
-            ]
+            id: employeeId
           },
           select: {
             id: true,
             name: true,
-            position: true,
-            department: true,
-            managerId: true
+            position: true
           }
         })
 

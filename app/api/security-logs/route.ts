@@ -19,12 +19,11 @@ export async function GET(request: NextRequest) {
     const where: any = {
       OR: [
         { action: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
+        { details: { contains: query, mode: 'insensitive' } },
         { ipAddress: { contains: query, mode: 'insensitive' } },
       ],
     }
 
-    if (level) where.level = level
     if (userId) where.userId = userId
 
     const [logs, total] = await Promise.all([
@@ -60,8 +59,7 @@ export const POST = withAuth(async (request: NextRequest, user: { id: string }) 
     const log = await prisma.securityLog.create({
       data: {
         action: validatedData.action,
-        description: validatedData.description,
-        level: validatedData.level || 'INFO',
+        details: validatedData.description,
         ipAddress: validatedData.ipAddress,
         userId: validatedData.userId || user.id,
       },

@@ -705,3 +705,4 @@ export const getSecurityMonitor = (prisma: PrismaClient): SecurityMonitor => {
 export default SecurityMonitor
 
 
+

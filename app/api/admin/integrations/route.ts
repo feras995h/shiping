@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     return ApiResponseHandler.success({
       integrations,
       total: integrations.length,
-      active: integrations.filter(i => i.status === 'active').length,
-      error: integrations.filter(i => i.status === 'error').length
+      active: integrations.filter(i => i.status === 'ACTIVE').length,
+      error: integrations.filter(i => i.status === 'ERROR').length
     })
   } catch (error) {
     logger.error('خطأ في جلب التكاملات', { error })
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const { name, type, description, endpoint, config } = body
 
     // التحقق من وجود التكامل
-    const existingIntegration = await prisma.integration.findUnique({
+    const existingIntegration = await prisma.integration.findFirst({
       where: { name }
     })
 
@@ -55,12 +55,11 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         type,
-        description,
         endpoint,
         config: config || {},
-        status: 'testing',
-        lastSync: new Date().toISOString(),
-        syncInterval: 'كل 15 دقيقة'
+        status: 'CONNECTING',
+        lastSync: new Date(),
+        createdBy: 'system' // سيتم تحديثه لاحقاً
       }
     })
 
@@ -133,8 +132,8 @@ export async function PATCH(request: NextRequest) {
       await prisma.integration.update({
         where: { id },
         data: {
-          status: testResult.success ? 'active' : 'error',
-          lastSync: new Date().toISOString()
+          status: testResult.success ? 'ACTIVE' : 'ERROR',
+          lastSync: new Date()
         }
       })
 

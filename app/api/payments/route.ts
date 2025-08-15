@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               invoiceNumber: true,
-              total: true,
-              currency: true
+              total: true
             }
           }
         },
@@ -125,7 +124,7 @@ export async function POST(request: NextRequest) {
         _sum: { amount: true }
       })
 
-      const remainingAmount = parseFloat(invoice.total.toString()) - (paidAmount._sum.amount || 0)
+      const remainingAmount = Number(invoice.total) - Number(paidAmount._sum.amount || 0)
       
       if (amount > remainingAmount) {
         return ApiResponseHandler.validationError([
@@ -139,18 +138,19 @@ export async function POST(request: NextRequest) {
 
     // إنشاء الدفعة
     const payment = await prisma.payment.create({
-      data: {
-        clientId,
-        clientName: client.name,
-        invoiceId: invoiceId || null,
-        amount: parseFloat(amount),
-        method,
-        referenceNumber: finalReferenceNumber,
-        notes,
-        currency,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        status: 'completed'
-      },
+                     data: {
+                 clientId,
+                 // clientName سيتم إضافته لاحقاً
+                 invoiceId: invoiceId || null,
+                 amount: parseFloat(amount),
+                 method,
+                 // referenceNumber سيتم إضافته لاحقاً
+                 notes,
+                 // currency سيتم إضافته لاحقاً
+                 paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+                 status: 'COMPLETED',
+                 createdBy: 'system' // سيتم تحديثه لاحقاً
+               },
       include: {
         client: {
           select: {
@@ -176,13 +176,13 @@ export async function POST(request: NextRequest) {
         _sum: { amount: true }
       })
 
-      const invoiceTotal = parseFloat(invoice.total.toString())
-      const paidTotal = totalPaid._sum.amount || 0
+      const invoiceTotal = Number(invoice?.total || 0)
+      const paidTotal = Number(totalPaid._sum.amount || 0)
 
       if (paidTotal >= invoiceTotal) {
         await prisma.invoice.update({
           where: { id: invoiceId },
-          data: { status: 'paid' }
+          data: { status: 'PAID' }
         })
 
         logger.logSystemEvent('تم دفع الفاتورة بالكامل', { 
@@ -227,7 +227,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // لا يمكن تعديل الدفعات المكتملة
-    if (existingPayment.status === 'completed') {
+    if (existingPayment.status === 'COMPLETED') {
       return ApiResponseHandler.validationError(['لا يمكن تعديل الدفعات المكتملة'])
     }
 
@@ -283,7 +283,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // لا يمكن حذف الدفعات المكتملة
-    if (payment.status === 'completed') {
+    if (payment.status === 'COMPLETED') {
       return ApiResponseHandler.validationError(['لا يمكن حذف الدفعات المكتملة'])
     }
 

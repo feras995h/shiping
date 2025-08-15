@@ -111,16 +111,16 @@ export async function POST(request: NextRequest) {
       data: {
         trackingNumber,
         clientId,
-        clientName: client.name,
+        // clientName سيتم إضافته لاحقاً
         origin,
         destination,
         weight: parseFloat(weight) || 0,
-        value: parseFloat(value) || 0,
+        // value سيتم إضافته لاحقاً
         currency,
         description,
-        expectedDelivery: expectedDelivery ? new Date(expectedDelivery) : null,
-        status: 'pending',
-        progress: 0
+        // expectedDelivery سيتم إضافته لاحقاً
+        status: 'PENDING',
+        // progress سيتم إضافته لاحقاً
       },
       include: {
         client: {

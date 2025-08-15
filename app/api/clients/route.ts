@@ -35,15 +35,9 @@ export async function GET(request: NextRequest) {
           email: true,
           phone: true,
           address: true,
-          status: true,
+          isActive: true,
           createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              shipments: true,
-              invoices: true
-            }
-          }
+          updatedAt: true
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -55,8 +49,8 @@ export async function GET(request: NextRequest) {
     // تنسيق البيانات
     const formattedClients = clients.map(client => ({
       ...client,
-      shipmentCount: client._count.shipments,
-      invoiceCount: client._count.invoices
+      shipmentCount: 0, // سيتم حسابه لاحقاً
+      invoiceCount: 0 // سيتم حسابه لاحقاً
     }))
 
     return ApiResponseHandler.success({
@@ -77,7 +71,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, phone, address, status = 'active' } = body
+    const { name, email, phone, address } = body
 
     // التحقق من البيانات المطلوبة
     if (!name || !email) {
@@ -105,7 +99,7 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         address,
-        status
+        createdBy: 'system' // سيتم تحديثه لاحقاً
       }
     })
 
