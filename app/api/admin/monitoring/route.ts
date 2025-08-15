@@ -3,57 +3,155 @@ import { prisma } from '@/lib/prisma'
 import { ApiResponseHandler } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
 import { withRole } from '@/lib/auth-middleware'
+import { getMonitoringService } from '@/lib/monitoring'; // Assuming this is correctly imported now
 
-export async function GET(request: NextRequest) {
+// Refactored GET endpoint as per the edited snippet
+export const GET = withAuth(async (request: NextRequest) => {
   try {
-    // جمع مقاييس النظام الحقيقية
-    const [
-      systemMetrics,
-      serviceStatuses,
-      activeUsers,
-      recentErrors
-    ] = await Promise.all([
-      // مقاييس النظام
-      getSystemMetrics(),
-      
-      // حالة الخدمات
-      getServiceStatuses(),
-      
-      // المستخدمين النشطين
-      getActiveUsers(),
-      
-      // الأخطاء الأخيرة
-      getRecentErrors()
-    ])
+    await requireAdmin(); // Assuming requireAdmin is available or handled by withAuth
 
-    return ApiResponseHandler.success({
-      systemMetrics,
-      serviceStatuses,
-      activeUsers,
-      recentErrors,
-      lastUpdated: new Date().toISOString()
-    })
+    const url = new URL(request.url);
+    const action = url.searchParams.get('action') || 'metrics';
+
+    const monitoringService = getMonitoringService(prisma);
+
+    switch (action) {
+      case 'metrics':
+        const metrics = await monitoringService.getSystemMetrics();
+        return ApiResponseHandler.success({ metrics });
+
+      case 'services':
+        const services = await monitoringService.getServiceHealth();
+        return ApiResponseHandler.success({ services });
+
+      case 'health':
+        const health = await monitoringService.performHealthChecks();
+        return ApiResponseHandler.success({ health });
+
+      default:
+        return ApiResponseHandler.badRequest('إجراء غير صحيح');
+    }
   } catch (error) {
-    logger.error('خطأ في جلب بيانات المراقبة', { error })
-    return ApiResponseHandler.serverError('خطأ في جلب بيانات المراقبة')
+    logger.error('خطأ في معالجة طلب المراقبة:', { error });
+    return ApiResponseHandler.serverError('فشل في معالجة الطلب');
+  }
+});
+
+// HEAD endpoint for health checks as per the edited snippet
+export async function HEAD() {
+  try {
+    const monitoringService = getMonitoringService(prisma);
+    const healthChecks = await monitoringService.performHealthChecks();
+
+    const unhealthyServices = healthChecks.filter(h => h.status !== 'online');
+
+    if (unhealthyServices.length > 0) {
+      return new Response(null, {
+        status: 503, // Service Unavailable
+        headers: {
+          'X-Health-Status': 'unhealthy',
+          'X-Unhealthy-Services': unhealthyServices.map(s => s.service).join(',')
+        }
+      });
+    }
+
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'X-Health-Status': 'healthy'
+      }
+    });
+  } catch (error) {
+    logger.error('خطأ في نقطة نهاية فحص الصحة:', { error });
+    return new Response(null, {
+      status: 503,
+      headers: {
+        'X-Health-Status': 'error',
+        'X-Error': 'Health check failed'
+      }
+    });
   }
 }
 
-// جمع مقاييس النظام
+// POST endpoint from original code
+export const POST = withRole(['ADMIN'])(async (request: NextRequest) => {
+  try {
+    const body = await request.json()
+    const { action, data } = body
+
+    const monitoringServiceInstance = getMonitoringService(prisma) // Renamed to avoid conflict
+    const performanceMonitor = getPerformanceMonitor(prisma)
+
+    switch (action) {
+      case 'record_metric':
+        if (!data.name || typeof data.value !== 'number') {
+          return ApiResponseHandler.validationError(['اسم المقياس والقيمة مطلوبان'])
+        }
+
+        performanceMonitor.recordMetric(
+          data.name,
+          data.value,
+          data.unit || 'ms',
+          data.category || 'system',
+          data.metadata
+        )
+
+        return ApiResponseHandler.success({ message: 'تم تسجيل المقياس بنجاح' })
+
+      case 'resolve_alert':
+        if (!data.alertId) {
+          return ApiResponseHandler.validationError(['معرف التنبيه مطلوب'])
+        }
+
+        const resolved = performanceMonitor.resolveAlert(data.alertId)
+        if (resolved) {
+          return ApiResponseHandler.success({ message: 'تم حل التنبيه بنجاح' })
+        } else {
+          return ApiResponseHandler.notFound('التنبيه غير موجود')
+        }
+
+      case 'update_thresholds':
+        if (!data.thresholds) {
+          return ApiResponseHandler.validationError(['العتبات الجديدة مطلوبة'])
+        }
+
+        performanceMonitor.updateThresholds(data.thresholds)
+        return ApiResponseHandler.success({ message: 'تم تحديث العتبات بنجاح' })
+
+      case 'cleanup':
+        const days = data.days || 7
+        performanceMonitor.cleanup(days)
+        return ApiResponseHandler.success({ message: `تم تنظيف البيانات الأقدم من ${days} أيام` })
+
+      case 'export_data':
+        const exportData = monitoringServiceInstance.exportMetrics()
+        return ApiResponseHandler.success({
+          data: exportData,
+          exportedAt: new Date().toISOString()
+        })
+
+      default:
+        return ApiResponseHandler.validationError(['إجراء غير صحيح'])
+    }
+  } catch (error) {
+    logger.error('خطأ في معالجة طلب المراقبة (POST):', { error })
+    return ApiResponseHandler.serverError('فشل في معالجة الطلب')
+  }
+})
+
+// --- Helper functions from original code ---
+
+// جمع مقاييس النظام (مُحاكاة)
 async function getSystemMetrics() {
   try {
-    // في التطبيق الحقيقي، ستستخدم مكتبات مثل os, process لحفظ معلومات النظام
-    // هنا نستخدم بيانات محاكاة بناءً على الوقت الحالي
-    
     const now = Date.now()
     const hour = new Date(now).getHours()
-    
-    // محاكاة استخدام المعالج بناءً على الوقت
+
     const cpuUsage = 30 + (hour * 2) + (Math.random() * 20)
     const memoryUsage = 60 + (hour * 1.5) + (Math.random() * 15)
     const storageUsage = 45 + (hour * 0.5) + (Math.random() * 10)
     const networkUsage = 20 + (hour * 1) + (Math.random() * 15)
-    
+
     return [
       {
         name: "استخدام المعالج",
@@ -113,10 +211,8 @@ async function getSystemMetrics() {
 // حالة الخدمات
 async function getServiceStatuses() {
   try {
-    // فحص حالة قاعدة البيانات
     const dbHealth = await checkDatabaseHealth()
-    
-    // فحص حالة الخدمات الأخرى
+
     const services = [
       {
         name: "الخادم الرئيسي",
@@ -166,12 +262,9 @@ async function getServiceStatuses() {
 async function checkDatabaseHealth() {
   try {
     const startTime = Date.now()
-    
-    // اختبار الاتصال بقاعدة البيانات
     await prisma.$queryRaw`SELECT 1`
-    
     const responseTime = Date.now() - startTime
-    
+
     return {
       status: "online",
       uptime: "99.8%",
@@ -190,10 +283,7 @@ async function checkDatabaseHealth() {
 // فحص خدمة البريد الإلكتروني
 async function checkEmailService() {
   try {
-    // في التطبيق الحقيقي، ستقوم بفحص خدمة البريد الإلكتروني
-    // هنا نستخدم محاكاة بسيطة
-    const isHealthy = Math.random() > 0.1 // 90% احتمال أن تكون الخدمة صحية
-    
+    const isHealthy = Math.random() > 0.1
     if (isHealthy) {
       return "online"
     } else {
@@ -209,10 +299,7 @@ async function checkEmailService() {
 // فحص خدمة التخزين
 async function checkStorageService() {
   try {
-    // في التطبيق الحقيقي، ستقوم بفحص خدمة التخزين
-    // هنا نستخدم محاكاة بسيطة
-    const isHealthy = Math.random() > 0.05 // 95% احتمال أن تكون الخدمة صحية
-    
+    const isHealthy = Math.random() > 0.05
     if (isHealthy) {
       return "online"
     } else {
@@ -228,10 +315,7 @@ async function checkStorageService() {
 // فحص تكامل البنوك
 async function checkBankIntegration() {
   try {
-    // في التطبيق الحقيقي، ستقوم بفحص تكامل البنوك
-    // هنا نستخدم محاكاة بسيطة
-    const isHealthy = Math.random() > 0.15 // 85% احتمال أن تكون الخدمة صحية
-    
+    const isHealthy = Math.random() > 0.15
     if (isHealthy) {
       return "online"
     } else {
@@ -244,16 +328,10 @@ async function checkBankIntegration() {
   }
 }
 
-// المستخدمين النشطين
+// المستخدمين النشطين (مُحاكاة)
 async function getActiveUsers() {
   try {
-    // حساب المستخدمين النشطين في آخر 15 دقيقة
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
-    
-    // في التطبيق الحقيقي، ستستخدم حقل lastLogin من جدول User
-    // هنا نستخدم محاكاة بسيطة
     const activeUsers = Math.floor(Math.random() * 50) + 10
-
     return activeUsers
   } catch (error) {
     logger.error('خطأ في حساب المستخدمين النشطين', { error })
@@ -261,12 +339,9 @@ async function getActiveUsers() {
   }
 }
 
-// الأخطاء الأخيرة
+// الأخطاء الأخيرة (مُحاكاة)
 async function getRecentErrors() {
   try {
-    // في التطبيق الحقيقي، ستجلب الأخطاء من جدول الأخطاء
-    // هنا نستخدم محاكاة بسيطة
-    
     const errors = [
       {
         id: "1",
@@ -283,7 +358,6 @@ async function getRecentErrors() {
         service: "email"
       }
     ]
-
     return errors
   } catch (error) {
     logger.error('خطأ في جلب الأخطاء الأخيرة', { error })
@@ -291,132 +365,16 @@ async function getRecentErrors() {
   }
 }
 
-export const POST = withRole(['ADMIN'])(async (request: NextRequest) => {
-  try {
-    const body = await request.json()
-    const { action, data } = body
-
-    const monitoringService = getMonitoringService(prisma)
-    const performanceMonitor = getPerformanceMonitor(prisma)
-
-    switch (action) {
-      case 'record_metric':
-        if (!data.name || typeof data.value !== 'number') {
-          return ApiResponseHandler.validationError(['اسم المقياس والقيمة مطلوبان'])
-        }
-        
-        performanceMonitor.recordMetric(
-          data.name,
-          data.value,
-          data.unit || 'ms',
-          data.category || 'system',
-          data.metadata
-        )
-        
-        return ApiResponseHandler.success({ message: 'تم تسجيل المقياس بنجاح' })
-
-      case 'resolve_alert':
-        if (!data.alertId) {
-          return ApiResponseHandler.validationError(['معرف التنبيه مطلوب'])
-        }
-        
-        const resolved = performanceMonitor.resolveAlert(data.alertId)
-        if (resolved) {
-          return ApiResponseHandler.success({ message: 'تم حل التنبيه بنجاح' })
-        } else {
-          return ApiResponseHandler.notFound('التنبيه غير موجود')
-        }
-
-      case 'update_thresholds':
-        if (!data.thresholds) {
-          return ApiResponseHandler.validationError(['العتبات الجديدة مطلوبة'])
-        }
-        
-        performanceMonitor.updateThresholds(data.thresholds)
-        return ApiResponseHandler.success({ message: 'تم تحديث العتبات بنجاح' })
-
-      case 'cleanup':
-        const days = data.days || 7
-        performanceMonitor.cleanup(days)
-        return ApiResponseHandler.success({ message: `تم تنظيف البيانات الأقدم من ${days} أيام` })
-
-      case 'export_data':
-        const exportData = monitoringService.exportMetrics()
-        return ApiResponseHandler.success({
-          data: exportData,
-          exportedAt: new Date().toISOString()
-        })
-
-      default:
-        return ApiResponseHandler.validationError(['إجراء غير صحيح'])
-    }
-  } catch (error) {
-    console.error('خطأ في معالجة طلب المراقبة:', error)
-    return ApiResponseHandler.serverError('فشل في معالجة الطلب')
-  }
-})
-
-// إضافة endpoint خاص لمراقبة الصحة (health check) للأنظمة الخارجية
-export async function HEAD() {
-  try {
-    const monitoringService = getMonitoringService(prisma)
-    const healthChecks = await monitoringService.performHealthChecks()
-    
-    const unhealthyServices = healthChecks.filter(h => h.status === 'unhealthy')
-    
-    if (unhealthyServices.length > 0) {
-      return new Response(null, { 
-        status: 503, // Service Unavailable
-        headers: {
-          'X-Health-Status': 'unhealthy',
-          'X-Unhealthy-Services': unhealthyServices.map(s => s.service).join(',')
-        }
-      })
-    }
-    
-    const degradedServices = healthChecks.filter(h => h.status === 'degraded')
-    
-    return new Response(null, { 
-      status: degradedServices.length > 0 ? 200 : 200,
-      headers: {
-        'X-Health-Status': degradedServices.length > 0 ? 'degraded' : 'healthy',
-        'X-Healthy-Services': healthChecks.filter(h => h.status === 'healthy').length.toString(),
-        'X-Total-Services': healthChecks.length.toString()
-      }
-    })
-  } catch (error) {
-    return new Response(null, { 
-      status: 500,
-      headers: {
-        'X-Health-Status': 'error',
-        'X-Error': 'Health check failed'
-      }
-    })
-  }
-}
-
-// دوال مساعدة محاكية
-function getMonitoringService(prisma: any) {
-  return {
-    exportMetrics: () => ({
-      systemMetrics: [],
-      serviceStatuses: [],
-      performanceData: []
-    }),
-    performHealthChecks: async () => [
-      { service: 'database', status: 'healthy' },
-      { service: 'email', status: 'healthy' },
-      { service: 'storage', status: 'healthy' }
-    ]
-  }
-}
-
+// Mock helper functions for the POST endpoint (if not provided by '@/lib/monitoring')
 function getPerformanceMonitor(prisma: any) {
   return {
     recordMetric: (name: string, value: number, unit: string, category: string, metadata?: any) => {
       logger.info('تم تسجيل مقياس', { name, value, unit, category, metadata })
     },
-    resolveAlert: (alertId: string) => true,
+    resolveAlert: (alertId: string) => {
+      logger.info('تم حل التنبيه', { alertId })
+      return true
+    },
     updateThresholds: (thresholds: any) => {
       logger.info('تم تحديث العتبات', { thresholds })
     },

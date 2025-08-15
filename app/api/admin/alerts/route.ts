@@ -1,106 +1,88 @@
-import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { ApiResponseHandler } from '@/lib/api-response'
-import { getFinancialAlertsService } from '@/lib/financial-alerts'
-import { withRole } from '@/lib/auth-middleware'
 
-export const GET = withRole(['ADMIN','MANAGER'])(async (request: NextRequest) => {
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { ApiResponseHandler } from '@/lib/api-response';
+import { withAuth } from '@/lib/auth-middleware';
+
+export const GET = withAuth(async (request: NextRequest) => {
   try {
-    // جلب التنبيهات من قاعدة البيانات
-    const dbAlerts = await prisma.alert.findMany({
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const type = url.searchParams.get('type');
+    const isRead = url.searchParams.get('isRead');
+
+    const where: any = {};
+    if (type) where.type = type;
+    if (isRead !== null) where.isRead = isRead === 'true';
+
+    const alerts = await prisma.alert.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
-      take: 50,
-    })
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
 
-    // جلب التنبيهات المالية الذكية
-    const financialAlertsService = getFinancialAlertsService(prisma)
-    const financialAlerts = await financialAlertsService.runAllChecks()
+    const total = await prisma.alert.count({ where });
 
-    // دمج التنبيهات
-    const allAlerts = [
-      ...financialAlerts.map(fAlert => ({
-        id: fAlert.id,
-        title: fAlert.title,
-        message: fAlert.message,
-        type: fAlert.severity === 'CRITICAL' ? 'ERROR' : 
-              fAlert.severity === 'HIGH' ? 'WARNING' : 
-              fAlert.severity === 'MEDIUM' ? 'WARNING' : 'INFO',
-        isRead: fAlert.isRead,
-        createdAt: fAlert.createdAt,
-        category: 'FINANCIAL',
-        actions: fAlert.actions
-      })),
-      ...dbAlerts.map(dbAlert => ({
-        ...dbAlert,
-        category: 'SYSTEM'
-      }))
-    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return ApiResponseHandler.success({
+      alerts,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
 
-    const alertStats = {
-      total: allAlerts.length,
-      active: allAlerts.filter((a: any) => !a.isRead).length,
-      critical: allAlerts.filter((a: any) => a.type === 'ERROR').length,
-      warning: allAlerts.filter((a: any) => a.type === 'WARNING').length,
-      financial: financialAlerts.length,
-      system: dbAlerts.length
-    }
-
-    return ApiResponseHandler.success({ alerts: allAlerts, stats: alertStats })
   } catch (error) {
-    console.error('Error fetching alerts:', error)
-    return ApiResponseHandler.serverError('فشل في جلب التنبيهات')
+    console.error('خطأ في جلب التنبيهات:', error);
+    return ApiResponseHandler.serverError('فشل في جلب التنبيهات');
   }
-})
+});
 
-export const POST = withRole(['ADMIN','MANAGER'])(async (request: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest, user: any) => {
   try {
-    const body = await request.json()
-    const { title, message, type, userId } = body
-
-    // دعم قديم: إذا أُرسل description بدل message
-    const finalMessage = message ?? body?.description ?? ''
+    const body = await request.json();
+    const { title, message, type, userId } = body;
 
     const alert = await prisma.alert.create({
       data: {
         title,
-        message: finalMessage,
+        message,
         type,
-        userId: userId ?? null,
-      },
-    })
+        userId: userId || user.id,
+        isRead: false
+      }
+    });
 
-    return ApiResponseHandler.success(alert, 'تم إنشاء التنبيه بنجاح')
+    return ApiResponseHandler.created(alert);
+
   } catch (error) {
-    console.error('Error creating alert:', error)
-    return ApiResponseHandler.validationError(['بيانات غير صحيحة'])
+    console.error('خطأ في إنشاء التنبيه:', error);
+    return ApiResponseHandler.serverError('فشل في إنشاء التنبيه');
   }
-})
+});
 
-export const PUT = withRole(['ADMIN','MANAGER'])(async (request: NextRequest) => {
+export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const body = await request.json()
-    const { id, isRead, title, message, type } = body as {
-      id: string
-      isRead?: boolean
-      title?: string
-      message?: string
-      type?: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS'
-    }
-
-    const data: any = {}
-    if (typeof isRead === 'boolean') data.isRead = isRead
-    if (typeof title === 'string' && title.length) data.title = title
-    if (typeof message === 'string') data.message = message
-    if (typeof type === 'string') data.type = type
+    const body = await request.json();
+    const { alertId, isRead } = body;
 
     const alert = await prisma.alert.update({
-      where: { id },
-      data,
-    })
+      where: { id: alertId },
+      data: { isRead }
+    });
 
-    return ApiResponseHandler.success(alert, 'تم تحديث التنبيه بنجاح')
+    return ApiResponseHandler.success(alert);
+
   } catch (error) {
-    console.error('Error updating alert:', error)
-    return ApiResponseHandler.validationError(['بيانات غير صحيحة'])
+    console.error('خطأ في تحديث التنبيه:', error);
+    return ApiResponseHandler.serverError('فشل في تحديث التنبيه');
   }
-})
+});

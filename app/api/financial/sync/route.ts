@@ -1,63 +1,104 @@
-import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { ApiResponseHandler } from '@/lib/api-response'
-import { getFinancialSyncService } from '@/lib/financial-sync'
 
-/**
- * API لمزامنة البيانات المالية بين المخزن المحلي وقاعدة البيانات
- */
-export async function POST(request: NextRequest) {
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { ApiResponseHandler } from '@/lib/api-response';
+import { withAuth } from '@/lib/auth-middleware';
+
+export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const body = await request.json()
-    const { action, fromDate, toDate } = body
+    // فحص حالة المزامنة الحالية
+    const lastSync = await prisma.systemSetting.findUnique({
+      where: { key: 'last_financial_sync' }
+    });
 
-    const syncService = getFinancialSyncService(prisma)
+    const pendingTransactions = await prisma.journalEntry.count({
+      where: { isPosted: false }
+    });
 
-    switch (action) {
-      case 'full_sync':
-        const result = await syncService.fullSync()
-        return ApiResponseHandler.success(result, 'تمت المزامنة')
+    const totalAccounts = await prisma.glAccount.count();
+    const activeAccounts = await prisma.glAccount.count({
+      where: { isActive: true }
+    });
 
-      case 'sync_accounts':
-        await syncService.syncChartOfAccounts()
-        return ApiResponseHandler.success(null, 'تم مزامنة دليل الحسابات')
+    return ApiResponseHandler.success({
+      lastSync: lastSync?.value ? new Date(lastSync.value) : null,
+      pendingTransactions,
+      totalAccounts,
+      activeAccounts,
+      status: pendingTransactions > 0 ? 'pending' : 'synchronized'
+    });
 
-      case 'sync_transactions':
-        await syncService.syncJournalEntries(fromDate, toDate)
-        return ApiResponseHandler.success(null, 'تم مزامنة القيود المحاسبية')
+  } catch (error) {
+    console.error('خطأ في فحص حالة المزامنة:', error);
+    return ApiResponseHandler.serverError('فشل في فحص حالة المزامنة');
+  }
+});
 
-      case 'status':
-        const status = syncService.getSyncStatus()
-        return ApiResponseHandler.success(status, 'حالة المزامنة')
+export const POST = withAuth(async (request: NextRequest, user: any) => {
+  try {
+    const body = await request.json();
+    const { type = 'full' } = body;
 
-      case 'backup':
-        const backupResult = await syncService.createLocalBackup()
-        return ApiResponseHandler.success(backupResult, 'تم إنشاء النسخة الاحتياطية')
+    // تنفيذ المزامنة
+    let syncedCount = 0;
 
-      case 'restore':
-        const restoreResult = await syncService.restoreFromBackup()
-        return ApiResponseHandler.success(restoreResult, 'تم استعادة البيانات')
+    if (type === 'full') {
+      // مزامنة كاملة - ترحيل جميع القيود غير المرحلة
+      const pendingEntries = await prisma.journalEntry.findMany({
+        where: { isPosted: false },
+        include: { entries: true }
+      });
 
-      default:
-        return ApiResponseHandler.validationError(['إجراء غير صحيح'])
+      for (const entry of pendingEntries) {
+        await prisma.journalEntry.update({
+          where: { id: entry.id },
+          data: { isPosted: true }
+        });
+        syncedCount++;
+      }
     }
 
-  } catch (error) {
-    console.error('خطأ في مزامنة البيانات المالية:', error)
-    return ApiResponseHandler.serverError('فشل في مزامنة البيانات')
-  }
-}
+    // تحديث وقت آخر مزامنة
+    await prisma.systemSetting.upsert({
+      where: { key: 'last_financial_sync' },
+      update: { value: new Date().toISOString() },
+      create: {
+        key: 'last_financial_sync',
+        value: new Date().toISOString(),
+        description: 'آخر مزامنة مالية',
+        category: 'financial',
+        createdBy: user.id
+      }
+    });
 
-export async function GET(request: NextRequest) {
-  try {
-    const syncService = getFinancialSyncService(prisma)
-    const status = syncService.getSyncStatus()
+    // إنشاء تنبيه نجاح المزامنة
+    await prisma.alert.create({
+      data: {
+        title: 'تم إكمال المزامنة المالية',
+        message: `تم ترحيل ${syncedCount} قيد محاسبي بنجاح`,
+        type: 'SUCCESS',
+        userId: user.id
+      }
+    });
+
+    return ApiResponseHandler.success({
+      message: 'تم إكمال المزامنة بنجاح',
+      syncedTransactions: syncedCount,
+      timestamp: new Date()
+    });
+
+  } catch (error) {
+    console.error('خطأ في المزامنة المالية:', error);
     
-    return ApiResponseHandler.success(status, 'حالة المزامنة')
-  } catch (error) {
-    console.error('خطأ في جلب حالة المزامنة:', error)
-    return ApiResponseHandler.serverError('فشل في جلب حالة المزامنة')
+    // إنشاء تنبيه خطأ
+    await prisma.alert.create({
+      data: {
+        title: 'فشل في المزامنة المالية',
+        message: 'حدث خطأ أثناء تنفيذ المزامنة المالية',
+        type: 'ERROR'
+      }
+    });
+
+    return ApiResponseHandler.serverError('فشل في تنفيذ المزامنة');
   }
-}
-
-
+});

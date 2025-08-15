@@ -1,42 +1,73 @@
+
 import { NextResponse } from 'next/server';
-import { ApiResponse } from './validations';
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+  code?: string;
+}
 
 export class ApiResponseHandler {
-  static success<T>(data: T, message?: string, status = 200) {
-    const response: ApiResponse = {
+  static success<T>(data: T, message?: string): NextResponse<ApiResponse<T>> {
+    return NextResponse.json({
       success: true,
-      message,
       data,
-    };
-    return NextResponse.json(response, { status });
+      message
+    });
   }
 
-  static error(message: string, status = 400, error?: string) {
-    const response: ApiResponse = {
+  static created<T>(data: T, message?: string): NextResponse<ApiResponse<T>> {
+    return NextResponse.json({
+      success: true,
+      data,
+      message: message || 'تم الإنشاء بنجاح'
+    }, { status: 201 });
+  }
+
+  static badRequest(message: string, error?: string): NextResponse<ApiResponse> {
+    return NextResponse.json({
       success: false,
       message,
-      error,
-    };
-    return NextResponse.json(response, { status });
+      error
+    }, { status: 400 });
   }
 
-  static notFound(message = 'Resource not found') {
-    return this.error(message, 404);
+  static unauthorized(message?: string): NextResponse<ApiResponse> {
+    return NextResponse.json({
+      success: false,
+      message: message || 'غير مصرح لك بالوصول'
+    }, { status: 401 });
   }
 
-  static unauthorized(message = 'Unauthorized') {
-    return this.error(message, 401);
+  static forbidden(message?: string): NextResponse<ApiResponse> {
+    return NextResponse.json({
+      success: false,
+      message: message || 'ليس لديك صلاحية للوصول'
+    }, { status: 403 });
   }
 
-  static forbidden(message = 'Forbidden') {
-    return this.error(message, 403);
+  static notFound(message?: string): NextResponse<ApiResponse> {
+    return NextResponse.json({
+      success: false,
+      message: message || 'المورد غير موجود'
+    }, { status: 404 });
   }
 
-  static serverError(message = 'Internal server error') {
-    return this.error(message, 500);
+  static serverError(message?: string, error?: string): NextResponse<ApiResponse> {
+    return NextResponse.json({
+      success: false,
+      message: message || 'خطأ في الخادم',
+      error
+    }, { status: 500 });
   }
 
-  static validationError(errors: string[]) {
-    return this.error('Validation failed', 400, errors.join(', '));
+  static validationError(errors: string[]): NextResponse<ApiResponse> {
+    return NextResponse.json({
+      success: false,
+      message: 'خطأ في التحقق من البيانات',
+      error: errors.join(', ')
+    }, { status: 422 });
   }
-} 
+}

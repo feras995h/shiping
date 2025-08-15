@@ -2,54 +2,49 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ApiResponseHandler } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
+import { withAuth } from '@/lib/auth-middleware'
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
-    const { searchParams } = new URL(request.url)
-    const search = searchParams.get('search')
-    const status = searchParams.get('status')
-    const clientId = searchParams.get('clientId')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const url = new URL(request.url)
+    const page = parseInt(url.searchParams.get('page') || '1')
+    const limit = parseInt(url.searchParams.get('limit') || '10')
+    const status = url.searchParams.get('status')
+    const query = url.searchParams.get('query')
+    const clientId = url.searchParams.get('clientId')
+    const employeeId = url.searchParams.get('employeeId')
 
     const where: any = {}
-    
-    if (search) {
+    if (status && status !== 'all') where.status = status
+    if (query) {
       where.OR = [
-        { trackingNumber: { contains: search, mode: 'insensitive' } },
-        { origin: { contains: search, mode: 'insensitive' } },
-        { destination: { contains: search, mode: 'insensitive' } },
-        { clientName: { contains: search, mode: 'insensitive' } }
+        { trackingNumber: { contains: query, mode: 'insensitive' } },
+        { origin: { contains: query, mode: 'insensitive' } },
+        { destination: { contains: query, mode: 'insensitive' } }
       ]
     }
-    
-    if (status && status !== 'all') {
-      where.status = status
-    }
+    if (clientId) where.clientId = clientId
+    if (employeeId) where.employeeId = employeeId
 
-    if (clientId) {
-      where.clientId = clientId
-    }
-
-    const [shipments, total] = await Promise.all([
-      prisma.shipment.findMany({
-        where,
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          }
+    const shipments = await prisma.shipment.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        client: {
+          select: { id: true, name: true, company: true }
         },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      prisma.shipment.count({ where })
-    ])
+        employee: {
+          select: { id: true, name: true }
+        },
+        currency: {
+          select: { code: true, symbol: true }
+        }
+      }
+    })
+
+    const total = await prisma.shipment.count({ where })
 
     return ApiResponseHandler.success({
       shipments,
@@ -60,91 +55,65 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit)
       }
     })
+
   } catch (error) {
     logger.error('خطأ في جلب الشحنات', { error })
-    return ApiResponseHandler.serverError('خطأ في جلب الشحنات')
+    return ApiResponseHandler.serverError('فشل في جلب الشحنات')
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, user: any) => {
   try {
     const body = await request.json()
     const { 
-      trackingNumber, 
       clientId, 
+      employeeId, 
       origin, 
       destination, 
       weight, 
-      value, 
-      currency = 'LYD',
-      description,
-      expectedDelivery
+      dimensions, 
+      description, 
+      cost, 
+      price, 
+      currencyId 
     } = body
 
-    // التحقق من البيانات المطلوبة
-    if (!trackingNumber || !clientId || !origin || !destination) {
-      return ApiResponseHandler.validationError([
-        'رقم التتبع، معرف العميل، المنشأ، والوجهة مطلوبة'
-      ])
-    }
+    // توليد رقم تتبع فريد
+    const trackingNumber = `SHP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-    // التحقق من عدم تكرار رقم التتبع
-    const existingShipment = await prisma.shipment.findUnique({
-      where: { trackingNumber }
-    })
-
-    if (existingShipment) {
-      return ApiResponseHandler.validationError(['رقم التتبع مستخدم بالفعل'])
-    }
-
-    // التحقق من وجود العميل
-    const client = await prisma.client.findUnique({
-      where: { id: clientId }
-    })
-
-    if (!client) {
-      return ApiResponseHandler.validationError(['العميل غير موجود'])
-    }
-
-    // إنشاء الشحنة الجديدة
     const shipment = await prisma.shipment.create({
       data: {
         trackingNumber,
         clientId,
-        // clientName سيتم إضافته لاحقاً
+        employeeId,
         origin,
         destination,
-        weight: parseFloat(weight) || 0,
-        // value سيتم إضافته لاحقاً
-        currency,
+        weight: parseFloat(weight),
+        dimensions,
         description,
-        // expectedDelivery سيتم إضافته لاحقاً
-        status: 'PENDING',
-        // progress سيتم إضافته لاحقاً
-      },
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
+        cost: parseFloat(cost),
+        price: parseFloat(price),
+        profit: parseFloat(price) - parseFloat(cost),
+        currencyId,
+        createdBy: user.id,
+        status: 'PENDING'
       }
     })
 
-    logger.logSystemEvent('إنشاء شحنة جديدة', { 
-      shipmentId: shipment.id, 
-      trackingNumber, 
-      clientId 
+    logger.logSystemEvent('إنشاء شحنة جديدة', {
+      shipmentId: shipment.id,
+      trackingNumber,
+      clientId,
+      employeeId
     })
 
-    return ApiResponseHandler.success(shipment, 'تم إنشاء الشحنة بنجاح')
+    return ApiResponseHandler.created(shipment)
+
   } catch (error) {
     logger.error('خطأ في إنشاء الشحنة', { error })
-    return ApiResponseHandler.serverError('خطأ في إنشاء الشحنة')
+    return ApiResponseHandler.serverError('فشل في إنشاء الشحنة')
   }
-}
+})
 
 export async function PUT(request: NextRequest) {
   try {

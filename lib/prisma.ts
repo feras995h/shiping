@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
@@ -19,12 +20,6 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// تحسين تجمع الاتصالات
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
-    errorFormat: 'pretty',
-  });
-};
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma; 
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
