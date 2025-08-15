@@ -103,3 +103,7 @@ jspm_packages/
 
 # Prisma
 prisma/migrations/
+
+# Large executable files
+cloudflared.exe
+*.exe
