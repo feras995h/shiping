@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="goldFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="50%" style="stop-color:#FFA500"/>
+      <stop offset="100%" style="stop-color:#DAA520"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- خلفية دائرية -->
+  <circle cx="16" cy="16" r="15" fill="url(#goldFav)" stroke="#B8860B" stroke-width="1"/>
+  
+  <!-- رأس الحصان -->
+  <path d="M16 4 Q14 6 13 10 Q12 14 14 16 Q16 18 18 16 Q20 14 19 10 Q18 6 16 4 Z" 
+        fill="#FFA500" stroke="#DAA520" stroke-width="0.5"/>
+  
+  <!-- عرف -->
+  <path d="M14 6 Q13 3 14 2 Q15 3 16 4 Q17 3 18 2 Q19 3 18 6 Q17 5 16 6 Q15 5 14 6" 
+        fill="#FFE55C" stroke="#DAA520" stroke-width="0.3"/>
+  
+  <!-- عين -->
+  <circle cx="15" cy="8" r="0.8" fill="#2C5F2D"/>
+  <circle cx="15.3" cy="7.7" r="0.3" fill="#87CEEB"/>
+  
+  <!-- منخار -->
+  <ellipse cx="16" cy="12" rx="0.8" ry="1.2" fill="#DAA520"/>
+  <circle cx="15.7" cy="11.7" r="0.2" fill="#8B4513"/>
+  <circle cx="16.3" cy="11.7" r="0.2" fill="#8B4513"/>
+  
+  <!-- جسم -->
+  <path d="M16 16 Q14 18 13 22 Q12 24 16 24 Q20 24 19 22 Q18 18 16 16" 
+        fill="#FFA500" stroke="#DAA520" stroke-width="0.5"/>
+  
+  <!-- أرجل -->
+  <rect x="14" y="22" width="1" height="6" fill="#FFA500" stroke="#DAA520" stroke-width="0.2"/>
+  <rect x="17" y="22" width="1" height="6" fill="#FFA500" stroke="#DAA520" stroke-width="0.2"/>
+  
+  <!-- حوافر -->
+  <ellipse cx="14.5" cy="28.5" rx="0.8" ry="0.5" fill="#8B4513"/>
+  <ellipse cx="17.5" cy="28.5" rx="0.8" ry="0.5" fill="#8B4513"/>
+  
+  <!-- ذيل -->
+  <path d="M19 20 Q22 21 23 23 Q22 24 20 24 Q19 23 19 21" 
+        fill="#FFE55C" stroke="#DAA520" stroke-width="0.3"/>
+  
+  <!-- نجمة على الجبهة -->
+  <path d="M16 7 L16.2 6.5 L16.7 6.7 L16.2 6.9 L16 7.4 L15.8 6.9 L15.3 6.7 L15.8 6.5 Z" 
+        fill="#FFFFFF" opacity="0.9"/>
+</svg>

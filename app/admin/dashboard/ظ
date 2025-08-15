@@ -1,0 +1,34 @@
+import { RoleGuard } from "@/components/auth/role-guard";
+import { KpiGrid } from "@/components/shared/kpi-cards";
+import { Card } from "@/components/ui/card";
+
+export default function AdminDashboardPage() {
+  const kpis = [
+    { title: "عدد المستخدمين", value: 128 },
+    { title: "صلاحيات محددة", value: 6, hint: "أدوار النظام" },
+    { title: "طلبات إنشاء حساب", value: 3, hint: "بانتظار الموافقة" },
+    { title: "تنبيهات النظام", value: 2, hint: "مطلوب متابعة" },
+  ];
+
+  return (
+    <RoleGuard allow={["admin"]}>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold">لوحة مدير النظام</h1>
+          <p className="text-sm text-muted-foreground">
+            نظرة عامة على إعدادات النظام والمستخدمين والصلاحيات.
+          </p>
+        </div>
+        <KpiGrid items={kpis} />
+        <Card className="p-4">
+          <h2 className="font-semibold">إدارة سريعة</h2>
+          <ul className="mt-3 list-disc pe-4 text-sm text-muted-foreground space-y-1">
+            <li>إدارة المستخدمين والصلاحيات</li>
+            <li>إعدادات عامة: العملات، الضرائب، طرق الشحن</li>
+            <li>قوالب المستندات والإشعارات</li>
+          </ul>
+        </Card>
+      </div>
+    </RoleGuard>
+  );
+}
