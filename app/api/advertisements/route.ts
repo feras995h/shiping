@@ -1,128 +1,122 @@
+
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { apiResponse } from "@/lib/api-response"
+import { z } from "zod"
+
+// Schema للتحقق من صحة البيانات
+const advertisementSchema = z.object({
+  title: z.string().min(1, "العنوان مطلوب"),
+  description: z.string().min(1, "الوصف مطلوب"),
+  content: z.string().optional(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
+  linkUrl: z.string().url().optional().or(z.literal("")),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  order: z.number().int().min(0).optional().default(0),
+  isActive: z.boolean().optional().default(true)
+})
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return apiResponse(null, 'غير مصرح', 401);
-    }
+    const { searchParams } = new URL(request.url)
+    const activeOnly = searchParams.get('active') === 'true'
 
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const type = searchParams.get('type');
-    const active = searchParams.get('active');
-
-    let whereClause: any = {};
-
-    if (status) {
-      whereClause.status = status;
-    }
-
-    if (type) {
-      whereClause.type = type;
-    }
-
-    if (active === 'true') {
-      const now = new Date();
-      whereClause = {
-        ...whereClause,
-        status: 'ACTIVE',
-        OR: [
-          { startDate: null },
-          { startDate: { lte: now } }
-        ],
-        AND: [
-          {
-            OR: [
-              { endDate: null },
-              { endDate: { gte: now } }
-            ]
-          }
-        ]
-      };
-    }
+    const whereClause = activeOnly ? {
+      isActive: true,
+      OR: [
+        { startDate: null },
+        { startDate: { lte: new Date() } }
+      ],
+      AND: [
+        {
+          OR: [
+            { endDate: null },
+            { endDate: { gte: new Date() } }
+          ]
+        }
+      ]
+    } : {}
 
     const advertisements = await prisma.advertisement.findMany({
       where: whereClause,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
       orderBy: [
-        { priority: 'desc' },
+        { order: 'asc' },
         { createdAt: 'desc' }
       ]
-    });
+    })
 
-    return apiResponse(advertisements, 'تم جلب الإعلانات بنجاح');
+    return NextResponse.json({
+      success: true,
+      data: advertisements,
+      message: "تم جلب الإعلانات بنجاح"
+    })
   } catch (error) {
-    console.error('خطأ في جلب الإعلانات:', error);
-    return apiResponse(null, 'خطأ في جلب الإعلانات', 500);
+    console.error('خطأ في جلب الإعلانات:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'خطأ في جلب الإعلانات',
+        message: 'حدث خطأ أثناء جلب الإعلانات'
+      },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !['ADMIN', 'EMPLOYEE', 'FINANCE_MANAGER'].includes(session.user.role)) {
-      return apiResponse(null, 'غير مصرح بإنشاء الإعلانات', 403);
+    const session = await getServerSession(authOptions)
+    if (!session || !['admin', 'employee'].includes(session.user.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'غير مصرح لك بإنشاء الإعلانات',
+          message: 'ليس لديك صلاحية لإنشاء الإعلانات'
+        },
+        { status: 403 }
+      )
     }
 
-    const data = await request.json();
-    const {
-      title,
-      content,
-      imageUrl,
-      linkUrl,
-      type,
-      status,
-      priority,
-      startDate,
-      endDate,
-      targetRole
-    } = data;
-
-    if (!title || !content) {
-      return apiResponse(null, 'العنوان والمحتوى مطلوبان', 400);
-    }
+    const body = await request.json()
+    const validatedData = advertisementSchema.parse(body)
 
     const advertisement = await prisma.advertisement.create({
       data: {
-        title,
-        content,
-        imageUrl,
-        linkUrl,
-        type: type || 'BANNER',
-        status: status || 'DRAFT',
-        priority: priority || 0,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        targetRole,
+        ...validatedData,
+        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
+        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
         createdBy: session.user.id
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
       }
-    });
+    })
 
-    return apiResponse(advertisement, 'تم إنشاء الإعلان بنجاح', 201);
+    return NextResponse.json({
+      success: true,
+      data: advertisement,
+      message: "تم إنشاء الإعلان بنجاح"
+    })
   } catch (error) {
-    console.error('خطأ في إنشاء الإعلان:', error);
-    return apiResponse(null, 'خطأ في إنشاء الإعلان', 500);
+    console.error('خطأ في إنشاء الإعلان:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'بيانات غير صحيحة',
+          message: error.errors[0]?.message || 'البيانات المدخلة غير صحيحة'
+        },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'خطأ في إنشاء الإعلان',
+        message: 'حدث خطأ أثناء إنشاء الإعلان'
+      },
+      { status: 500 }
+    )
   }
 }

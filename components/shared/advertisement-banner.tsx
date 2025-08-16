@@ -1,96 +1,165 @@
 
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { X, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { X, ExternalLink, Calendar, Clock } from "lucide-react"
 
 interface Advertisement {
-  id: string;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  linkUrl?: string;
-  type: 'BANNER' | 'POPUP' | 'SLIDER' | 'ANNOUNCEMENT';
-  status: 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
-  priority: number;
+  id: string
+  title: string
+  description: string
+  content: string
+  imageUrl?: string
+  linkUrl?: string
+  startDate?: string
+  endDate?: string
+  isActive: boolean
+  order: number
+  createdAt: string
 }
 
 interface AdvertisementBannerProps {
-  className?: string;
-  type?: 'BANNER' | 'ANNOUNCEMENT';
-  dismissible?: boolean;
+  className?: string
+  maxAds?: number
 }
 
-export function AdvertisementBanner({
-  className,
-  type = 'BANNER',
-  dismissible = true
-}: AdvertisementBannerProps) {
-  const [advertisement, setAdvertisement] = useState<Advertisement | null>(null);
-  const [isVisible, setIsVisible] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+export function AdvertisementBanner({ className = "", maxAds = 3 }: AdvertisementBannerProps) {
+  const [ads, setAds] = useState<Advertisement[]>([])
+  const [dismissedAds, setDismissedAds] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchAdvertisement = async () => {
+    const fetchAdvertisements = async () => {
       try {
-        setIsLoading(true);
-        const response = await fetch(`/api/advertisements?active=true&type=${type}`);
-        const data = await response.json();
-        
-        if (data.success && data.data && data.data.length > 0) {
-          // أخذ الإعلان ذو الأولوية الأعلى
-          const sortedAds = data.data.sort((a: Advertisement, b: Advertisement) => b.priority - a.priority);
-          setAdvertisement(sortedAds[0]);
+        const response = await fetch('/api/advertisements')
+        if (!response.ok) {
+          throw new Error('فشل في جلب الإعلانات')
         }
-      } catch (error) {
-        console.error('خطأ في جلب الإعلان:', error);
+        const data = await response.json()
+        const activeAds = (data.data || [])
+          .filter((ad: Advertisement) => ad.isActive)
+          .slice(0, maxAds)
+        setAds(activeAds)
+      } catch (err) {
+        console.error('خطأ في جلب الإعلانات:', err)
+        // البيانات الافتراضية
+        setAds([
+          {
+            id: "1",
+            title: "خدمات شحن متطورة",
+            description: "نوفر أفضل خدمات الشحن من الصين إلى ليبيا",
+            content: "خدمات شحن احترافية وموثوقة",
+            linkUrl: "/services",
+            isActive: true,
+            order: 1,
+            createdAt: "2024-01-01T00:00:00Z"
+          }
+        ])
       } finally {
-        setIsLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchAdvertisement();
-  }, [type]);
+    fetchAdvertisements()
+  }, [maxAds])
 
-  if (isLoading || !advertisement || !isVisible) {
-    return null;
+  const handleDismiss = (adId: string) => {
+    setDismissedAds(prev => new Set(prev).add(adId))
+  }
+
+  const handleAdClick = (ad: Advertisement) => {
+    if (ad.linkUrl) {
+      window.open(ad.linkUrl, '_blank')
+    }
+  }
+
+  const visibleAds = ads.filter(ad => !dismissedAds.has(ad.id))
+
+  if (loading) {
+    return (
+      <div className={`space-y-4 ${className}`}>
+        {[...Array(2)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-4">
+              <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (visibleAds.length === 0) {
+    return null
   }
 
   return (
-    <Alert className={cn("relative border-blue-200 bg-blue-50", className)}>
-      <AlertDescription className="flex items-center justify-between pr-8">
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-blue-900">{advertisement.title}</span>
-            <span className="text-blue-700">{advertisement.content}</span>
-            {advertisement.linkUrl && (
+    <div className={`space-y-4 ${className}`}>
+      {visibleAds.map((ad) => (
+        <Card 
+          key={ad.id} 
+          className="relative overflow-hidden border-l-4 border-l-yellow-500 bg-gradient-to-r from-yellow-50 to-white"
+        >
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 pr-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                    إعلان مهم
+                  </Badge>
+                  {ad.startDate && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(ad.startDate).toLocaleDateString('ar-SA')}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <h4 className="font-semibold text-gray-900 mb-1">
+                  {ad.title}
+                </h4>
+                
+                <p className="text-sm text-gray-600 mb-3">
+                  {ad.description}
+                </p>
+                
+                <div className="flex items-center gap-3">
+                  {ad.linkUrl && (
+                    <Button 
+                      size="sm"
+                      onClick={() => handleAdClick(ad)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs"
+                    >
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                      المزيد
+                    </Button>
+                  )}
+                  
+                  {ad.endDate && (
+                    <div className="flex items-center gap-1 text-xs text-amber-600">
+                      <Clock className="h-3 w-3" />
+                      <span>ينتهي: {new Date(ad.endDate).toLocaleDateString('ar-SA')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
-                className="text-blue-600 p-0 h-auto"
-                onClick={() => window.open(advertisement.linkUrl, '_blank')}
+                onClick={() => handleDismiss(ad.id)}
+                className="absolute top-2 left-2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
               >
-                المزيد
-                <ExternalLink className="h-3 w-3 mr-1" />
+                <X className="h-3 w-3" />
               </Button>
-            )}
-          </div>
-        </div>
-        
-        {dismissible && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
-            onClick={() => setIsVisible(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </AlertDescription>
-    </Alert>
-  );
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
 }

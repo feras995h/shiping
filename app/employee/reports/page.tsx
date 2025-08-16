@@ -1,312 +1,150 @@
+
 "use client"
 
-import { useState } from "react"
-import { 
-  FileText, 
-  Download, 
-  Eye, 
-  Search, 
-  Filter, 
-  Calendar,
-  BarChart3,
-  PieChart,
-  TrendingUp,
-  Users,
-  Package,
-  DollarSign,
-  Clock,
-  MoreHorizontal,
-  Plus,
-  Edit,
-  Trash2,
-  Share2
-} from "lucide-react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { 
+  FileText, 
+  Plus, 
+  Search, 
+  Filter, 
+  Download, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  Calendar,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  TrendingUp
+} from "lucide-react"
 
 interface Report {
   id: string
   title: string
   description: string
-  type: 'performance' | 'operations' | 'financial' | 'analytics' | 'custom'
-  category: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'custom'
-  status: 'draft' | 'pending' | 'completed' | 'archived'
+  type: 'shipment' | 'financial' | 'client' | 'performance' | 'inventory'
+  status: 'draft' | 'pending' | 'completed' | 'rejected'
   priority: 'low' | 'medium' | 'high' | 'critical'
   createdBy: string
   createdAt: string
   updatedAt: string
   dueDate?: string
-  completedAt?: string
-  fileSize: number
-  fileType: 'pdf' | 'excel' | 'word' | 'csv'
-  downloadCount: number
-  tags: string[]
-  data: ReportData
+  fileUrl?: string
+  fileType?: 'pdf' | 'excel' | 'word' | 'csv'
+  fileSize?: number
+  progress: number
+  assignedTo?: string
 }
 
-interface ReportData {
-  totalRecords: number
-  processedRecords: number
-  errors: number
-  warnings: number
-  metrics: Metric[]
-  charts: Chart[]
+const reportTypes = {
+  shipment: 'تقارير الشحن',
+  financial: 'تقارير مالية',
+  client: 'تقارير العملاء',
+  performance: 'تقارير الأداء',
+  inventory: 'تقارير المخزون'
 }
 
-interface Metric {
-  name: string
-  value: number
-  unit: string
-  change: number
-  trend: 'up' | 'down' | 'stable'
+const statusColors = {
+  draft: 'bg-gray-100 text-gray-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  completed: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700'
 }
 
-interface Chart {
-  id: string
-  type: 'bar' | 'line' | 'pie' | 'doughnut'
-  title: string
-  data: any
-}
-
-const mockReports: Report[] = [
-  {
-    id: "1",
-    title: "تقرير الأداء الشهري - مارس 2024",
-    description: "تقرير شامل عن أداء الموظفين والإنتاجية خلال شهر مارس",
-    type: "performance",
-    category: "monthly",
-    status: "completed",
-    priority: "high",
-    createdBy: "أحمد محمد",
-    createdAt: "2024-03-31T10:00:00Z",
-    updatedAt: "2024-03-31T15:30:00Z",
-    completedAt: "2024-03-31T15:30:00Z",
-    fileSize: 2048576,
-    fileType: "pdf",
-    downloadCount: 15,
-    tags: ["أداء", "شهري", "موظفين"],
-    data: {
-      totalRecords: 150,
-      processedRecords: 150,
-      errors: 0,
-      warnings: 2,
-      metrics: [
-        {
-          name: "متوسط الإنتاجية",
-          value: 85.5,
-          unit: "%",
-          change: 5.2,
-          trend: "up"
-        },
-        {
-          name: "عدد المهام المنجزة",
-          value: 45,
-          unit: "مهمة",
-          change: -2,
-          trend: "down"
-        },
-        {
-          name: "وقت الاستجابة",
-          value: 2.3,
-          unit: "ساعات",
-          change: -0.5,
-          trend: "up"
-        }
-      ],
-      charts: []
-    }
-  },
-  {
-    id: "2",
-    title: "تقرير عمليات الشحن - الأسبوع 12",
-    description: "تقرير أسبوعي عن عمليات الشحن والتخليص الجمركي",
-    type: "operations",
-    category: "weekly",
-    status: "completed",
-    priority: "medium",
-    createdBy: "فاطمة حسن",
-    createdAt: "2024-03-28T09:00:00Z",
-    updatedAt: "2024-03-28T14:00:00Z",
-    completedAt: "2024-03-28T14:00:00Z",
-    fileSize: 1536000,
-    fileType: "excel",
-    downloadCount: 8,
-    tags: ["شحن", "أسبوعي", "عمليات"],
-    data: {
-      totalRecords: 75,
-      processedRecords: 75,
-      errors: 1,
-      warnings: 0,
-      metrics: [
-        {
-          name: "عدد الشحنات",
-          value: 25,
-          unit: "شحنة",
-          change: 3,
-          trend: "up"
-        },
-        {
-          name: "معدل التخليص",
-          value: 92.5,
-          unit: "%",
-          change: 1.5,
-          trend: "up"
-        },
-        {
-          name: "متوسط وقت التوصيل",
-          value: 4.2,
-          unit: "أيام",
-          change: -0.3,
-          trend: "up"
-        }
-      ],
-      charts: []
-    }
-  },
-  {
-    id: "3",
-    title: "التقرير المالي - الربع الأول 2024",
-    description: "تقرير مالي شامل للربع الأول من عام 2024",
-    type: "financial",
-    category: "quarterly",
-    status: "pending",
-    priority: "critical",
-    createdBy: "محمد علي",
-    createdAt: "2024-03-25T08:00:00Z",
-    updatedAt: "2024-03-30T16:00:00Z",
-    dueDate: "2024-04-05T17:00:00Z",
-    fileSize: 0,
-    fileType: "pdf",
-    downloadCount: 0,
-    tags: ["مالي", "ربعي", "2024"],
-    data: {
-      totalRecords: 0,
-      processedRecords: 0,
-      errors: 0,
-      warnings: 0,
-      metrics: [],
-      charts: []
-    }
-  },
-  {
-    id: "4",
-    title: "تحليل بيانات العملاء",
-    description: "تحليل شامل لبيانات العملاء وتفضيلاتهم",
-    type: "analytics",
-    category: "custom",
-    status: "draft",
-    priority: "low",
-    createdBy: "سارة أحمد",
-    createdAt: "2024-03-29T11:00:00Z",
-    updatedAt: "2024-03-29T11:00:00Z",
-    fileSize: 0,
-    fileType: "excel",
-    downloadCount: 0,
-    tags: ["تحليل", "عملاء", "بيانات"],
-    data: {
-      totalRecords: 0,
-      processedRecords: 0,
-      errors: 0,
-      warnings: 0,
-      metrics: [],
-      charts: []
-    }
-  }
-]
-
-const getStatusColor = (status: Report['status']) => {
-  switch (status) {
-    case 'completed': return 'bg-green-100 text-green-800'
-    case 'pending': return 'bg-yellow-100 text-yellow-800'
-    case 'draft': return 'bg-gray-100 text-gray-800'
-    case 'archived': return 'bg-blue-100 text-blue-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-const getStatusText = (status: Report['status']) => {
-  switch (status) {
-    case 'completed': return 'مكتمل'
-    case 'pending': return 'قيد التنفيذ'
-    case 'draft': return 'مسودة'
-    case 'archived': return 'مؤرشف'
-    default: return status
-  }
-}
-
-const getTypeColor = (type: Report['type']) => {
-  switch (type) {
-    case 'performance': return 'bg-blue-100 text-blue-800'
-    case 'operations': return 'bg-green-100 text-green-800'
-    case 'financial': return 'bg-purple-100 text-purple-800'
-    case 'analytics': return 'bg-orange-100 text-orange-800'
-    case 'custom': return 'bg-gray-100 text-gray-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-const getTypeText = (type: Report['type']) => {
-  switch (type) {
-    case 'performance': return 'أداء'
-    case 'operations': return 'عمليات'
-    case 'financial': return 'مالي'
-    case 'analytics': return 'تحليلات'
-    case 'custom': return 'مخصص'
-    default: return type
-  }
-}
-
-const getPriorityColor = (priority: Report['priority']) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-100 text-red-800'
-    case 'high': return 'bg-orange-100 text-orange-800'
-    case 'medium': return 'bg-yellow-100 text-yellow-800'
-    case 'low': return 'bg-green-100 text-green-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-const getPriorityText = (priority: Report['priority']) => {
-  switch (priority) {
-    case 'critical': return 'حرج'
-    case 'high': return 'عالي'
-    case 'medium': return 'متوسط'
-    case 'low': return 'منخفض'
-    default: return priority
-  }
-}
-
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const getFileTypeIcon = (fileType: Report['fileType']) => {
-  switch (fileType) {
-    case 'pdf': return '📄'
-    case 'excel': return '📊'
-    case 'word': return '📝'
-    case 'csv': return '📋'
-    default: return '📄'
-  }
+const priorityColors = {
+  low: 'bg-blue-100 text-blue-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  high: 'bg-orange-100 text-orange-700',
+  critical: 'bg-red-100 text-red-700'
 }
 
 export default function EmployeeReportsPage() {
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
 
-  const filteredReports = mockReports.filter(report => {
+  // جلب التقارير من API
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const response = await fetch('/api/reports')
+        if (!response.ok) {
+          throw new Error('فشل في جلب التقارير')
+        }
+        const data = await response.json()
+        setReports(data.data || [])
+      } catch (error) {
+        console.error('خطأ في جلب التقارير:', error)
+        // بيانات وهمية للعرض
+        setReports([
+          {
+            id: "1",
+            title: "تقرير شحنات شهر يناير",
+            description: "تقرير شامل عن جميع الشحنات المنجزة خلال شهر يناير 2024",
+            type: "shipment",
+            status: "completed",
+            priority: "high",
+            createdBy: "أحمد محمد",
+            createdAt: "2024-01-15T08:00:00Z",
+            updatedAt: "2024-01-20T14:30:00Z",
+            dueDate: "2024-01-25T23:59:59Z",
+            fileUrl: "/reports/shipments-january-2024.pdf",
+            fileType: "pdf",
+            fileSize: 2048576,
+            progress: 100,
+            assignedTo: "سارة أحمد"
+          },
+          {
+            id: "2",
+            title: "تحليل أداء العملاء",
+            description: "تقرير تحليلي لأداء العملاء وسلوك الشراء",
+            type: "client",
+            status: "pending",
+            priority: "medium",
+            createdBy: "محمد علي",
+            createdAt: "2024-01-18T10:15:00Z",
+            updatedAt: "2024-01-19T16:45:00Z",
+            dueDate: "2024-01-30T23:59:59Z",
+            progress: 75,
+            assignedTo: "ليلى حسن"
+          },
+          {
+            id: "3",
+            title: "تقرير الأداء المالي",
+            description: "تقرير مالي شامل للربع الأول من العام",
+            type: "financial",
+            status: "draft",
+            priority: "critical",
+            createdBy: "فاطمة الزهراء",
+            createdAt: "2024-01-20T12:00:00Z",
+            updatedAt: "2024-01-20T12:00:00Z",
+            dueDate: "2024-02-05T23:59:59Z",
+            progress: 30,
+            assignedTo: "عمر خالد"
+          }
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchReports()
+  }, [])
+
+  const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.createdBy.toLowerCase().includes(searchTerm.toLowerCase())
@@ -316,11 +154,51 @@ export default function EmployeeReportsPage() {
     return matchesSearch && matchesType && matchesStatus
   })
 
-  const getProgressPercentage = (report: Report) => {
-    if (report.status === 'completed') return 100
-    if (report.status === 'pending') return 60
-    if (report.status === 'draft') return 30
-    return 0
+  const getStatusIcon = (status: Report['status']) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="h-4 w-4 text-green-600" />
+      case 'pending': return <Clock className="h-4 w-4 text-yellow-600" />
+      case 'rejected': return <XCircle className="h-4 w-4 text-red-600" />
+      default: return <AlertCircle className="h-4 w-4 text-gray-600" />
+    }
+  }
+
+  const getStatusText = (status: Report['status']) => {
+    switch (status) {
+      case 'draft': return 'مسودة'
+      case 'pending': return 'قيد المراجعة'
+      case 'completed': return 'مكتمل'
+      case 'rejected': return 'مرفوض'
+      default: return status
+    }
+  }
+
+  const getPriorityText = (priority: Report['priority']) => {
+    switch (priority) {
+      case 'critical': return 'حرج'
+      case 'high': return 'عالي'
+      case 'medium': return 'متوسط'
+      case 'low': return 'منخفض'
+      default: return priority
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const getFileTypeIcon = (fileType?: Report['fileType']) => {
+    switch (fileType) {
+      case 'pdf': return '📄'
+      case 'excel': return '📊'
+      case 'word': return '📝'
+      case 'csv': return '📋'
+      default: return '📄'
+    }
   }
 
   const getDaysUntilDue = (dueDate: string) => {
@@ -331,6 +209,47 @@ export default function EmployeeReportsPage() {
     return diffDays
   }
 
+  const handleCreateReport = () => {
+    // إنشاء تقرير جديد
+    console.log('إنشاء تقرير جديد')
+  }
+
+  const handleViewReport = (report: Report) => {
+    setSelectedReport(report)
+  }
+
+  const handleDownloadReport = (report: Report) => {
+    if (report.fileUrl) {
+      window.open(report.fileUrl, '_blank')
+    }
+  }
+
+  const handleEditReport = (report: Report) => {
+    console.log('تعديل التقرير:', report.id)
+  }
+
+  const handleDeleteReport = (report: Report) => {
+    if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
+      setReports(prev => prev.filter(r => r.id !== report.id))
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -339,7 +258,7 @@ export default function EmployeeReportsPage() {
           <h1 className="text-3xl font-bold text-gray-900">التقارير</h1>
           <p className="text-gray-600 mt-2">إدارة وتصفح التقارير</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={handleCreateReport} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="ml-2 h-4 w-4" />
           تقرير جديد
         </Button>
@@ -352,7 +271,7 @@ export default function EmployeeReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">إجمالي التقارير</p>
-                <p className="text-2xl font-bold text-gray-900">{mockReports.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{reports.length}</p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <FileText className="h-6 w-6 text-blue-600" />
@@ -367,11 +286,11 @@ export default function EmployeeReportsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">مكتملة</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {mockReports.filter(r => r.status === 'completed').length}
+                  {reports.filter(r => r.status === 'completed').length}
                 </p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-6 w-6 text-green-600" />
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
@@ -381,9 +300,9 @@ export default function EmployeeReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">قيد التنفيذ</p>
+                <p className="text-sm font-medium text-gray-600">قيد المراجعة</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {mockReports.filter(r => r.status === 'pending').length}
+                  {reports.filter(r => r.status === 'pending').length}
                 </p>
               </div>
               <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -397,13 +316,13 @@ export default function EmployeeReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">إجمالي التحميلات</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {mockReports.reduce((acc, r) => acc + r.downloadCount, 0)}
+                <p className="text-sm font-medium text-gray-600">عالية الأولوية</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {reports.filter(r => r.priority === 'critical' || r.priority === 'high').length}
                 </p>
               </div>
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Download className="h-6 w-6 text-purple-600" />
+              <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
             </div>
           </CardContent>
@@ -415,9 +334,11 @@ export default function EmployeeReportsPage() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
+              <Label htmlFor="search">البحث</Label>
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
+                  id="search"
                   placeholder="البحث في التقارير..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -425,381 +346,243 @@ export default function EmployeeReportsPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">جميع الأنواع</option>
-                <option value="performance">أداء</option>
-                <option value="operations">عمليات</option>
-                <option value="financial">مالي</option>
-                <option value="analytics">تحليلات</option>
-                <option value="custom">مخصص</option>
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">جميع الحالات</option>
-                <option value="draft">مسودة</option>
-                <option value="pending">قيد التنفيذ</option>
-                <option value="completed">مكتمل</option>
-                <option value="archived">مؤرشف</option>
-              </select>
+            
+            <div className="w-full md:w-48">
+              <Label>نوع التقرير</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="جميع الأنواع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الأنواع</SelectItem>
+                  {Object.entries(reportTypes).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full md:w-48">
+              <Label>الحالة</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="جميع الحالات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  <SelectItem value="draft">مسودة</SelectItem>
+                  <SelectItem value="pending">قيد المراجعة</SelectItem>
+                  <SelectItem value="completed">مكتمل</SelectItem>
+                  <SelectItem value="rejected">مرفوض</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Reports Grid */}
+      {/* Reports List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredReports.map((report) => (
           <Card key={report.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg font-semibold text-gray-900">
-                    {report.title}
-                  </CardTitle>
-                  <CardDescription className="mt-2 text-gray-600">
+                  <CardTitle className="text-lg line-clamp-2">{report.title}</CardTitle>
+                  <CardDescription className="mt-1 line-clamp-2">
                     {report.description}
                   </CardDescription>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
-                    <DropdownMenuItem>
-                      <Eye className="ml-2 h-4 w-4" />
-                      عرض التفاصيل
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Download className="ml-2 h-4 w-4" />
-                      تحميل
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Share2 className="ml-2 h-4 w-4" />
-                      مشاركة
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Edit className="ml-2 h-4 w-4" />
-                      تعديل
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-red-600">
-                      <Trash2 className="ml-2 h-4 w-4" />
-                      حذف
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 mt-3">
-                <Badge className={getStatusColor(report.status)}>
-                  {getStatusText(report.status)}
-                </Badge>
-                <Badge className={getTypeColor(report.type)}>
-                  {getTypeText(report.type)}
-                </Badge>
-                <Badge className={getPriorityColor(report.priority)}>
-                  {getPriorityText(report.priority)}
-                </Badge>
+                <div className="flex items-center gap-1 ml-2">
+                  {getStatusIcon(report.status)}
+                </div>
               </div>
             </CardHeader>
             
             <CardContent className="space-y-4">
-              {/* Progress */}
-              <div>
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>التقدم</span>
-                  <span>{getProgressPercentage(report)}%</span>
-                </div>
-                <Progress value={getProgressPercentage(report)} className="h-2" />
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2">
+                <Badge className={statusColors[report.status]}>
+                  {getStatusText(report.status)}
+                </Badge>
+                <Badge className={priorityColors[report.priority]}>
+                  {getPriorityText(report.priority)}
+                </Badge>
+                <Badge variant="outline">
+                  {reportTypes[report.type]}
+                </Badge>
               </div>
 
-              {/* Report Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">المنشئ:</span>
-                  <div className="font-medium">{report.createdBy}</div>
+              {/* Progress */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>التقدم</span>
+                  <span>{report.progress}%</span>
                 </div>
-                <div>
-                  <span className="text-gray-500">تاريخ الإنشاء:</span>
-                  <div className="font-medium">
-                    {new Date(report.createdAt).toLocaleDateString('ar-SA')}
-                  </div>
+                <Progress value={report.progress} className="h-2" />
+              </div>
+
+              {/* Metadata */}
+              <div className="space-y-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>تاريخ الإنشاء: {new Date(report.createdAt).toLocaleDateString('ar-SA')}</span>
                 </div>
+                
                 {report.dueDate && (
-                  <div>
-                    <span className="text-gray-500">تاريخ الاستحقاق:</span>
-                    <div className="font-medium">
-                      {new Date(report.dueDate).toLocaleDateString('ar-SA')}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                      موعد التسليم: {new Date(report.dueDate).toLocaleDateString('ar-SA')}
+                      {getDaysUntilDue(report.dueDate) < 0 && (
+                        <span className="text-red-600 mr-1">(متأخر)</span>
+                      )}
+                    </span>
                   </div>
                 )}
-                <div>
-                  <span className="text-gray-500">التحميلات:</span>
-                  <div className="font-medium">{report.downloadCount}</div>
-                </div>
-              </div>
 
-              {/* File Info */}
-              {report.fileSize > 0 && (
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div className="flex items-center gap-2">
+                  <span>بواسطة: {report.createdBy}</span>
+                </div>
+
+                {report.assignedTo && (
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{getFileTypeIcon(report.fileType)}</span>
-                    <div>
-                      <div className="text-sm font-medium">{report.fileType.toUpperCase()}</div>
-                      <div className="text-xs text-gray-500">{formatFileSize(report.fileSize)}</div>
-                    </div>
+                    <span>مُعيَّن إلى: {report.assignedTo}</span>
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="ml-1 h-4 w-4" />
-                    تحميل
-                  </Button>
-                </div>
-              )}
+                )}
 
-              {/* Tags */}
-              <div>
-                <span className="text-gray-500 text-sm">العلامات:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {report.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                {report.fileUrl && (
+                  <div className="flex items-center gap-2">
+                    <span>{getFileTypeIcon(report.fileType)}</span>
+                    <span>{formatFileSize(report.fileSize || 0)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewReport(report)}
                   className="flex-1"
-                  onClick={() => setSelectedReport(report)}
                 >
-                  <Eye className="ml-1 h-4 w-4" />
-                  التفاصيل
+                  <Eye className="h-4 w-4 ml-1" />
+                  عرض
                 </Button>
-                {report.status === 'completed' && (
-                  <Button variant="outline" size="sm">
-                    <Download className="ml-1 h-4 w-4" />
-                    تحميل
+                
+                {report.fileUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadReport(report)}
+                  >
+                    <Download className="h-4 w-4" />
                   </Button>
                 )}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEditReport(report)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeleteReport(report)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Report Details Modal */}
+      {filteredReports.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تقارير</h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm || typeFilter !== "all" || statusFilter !== "all" 
+                ? "لم يتم العثور على تقارير تطابق معايير البحث" 
+                : "لم يتم إنشاء أي تقارير بعد"
+              }
+            </p>
+            <Button onClick={handleCreateReport}>
+              <Plus className="h-4 w-4 ml-2" />
+              إنشاء تقرير جديد
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Report Details Dialog */}
       {selectedReport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedReport.title}</h2>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setSelectedReport(null)}
-                >
-                  ✕
-                </Button>
+        <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{selectedReport.title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-gray-700">{selectedReport.description}</p>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">النوع:</span>
+                  <span className="mr-2">{reportTypes[selectedReport.type]}</span>
+                </div>
+                <div>
+                  <span className="font-medium">الحالة:</span>
+                  <span className="mr-2">{getStatusText(selectedReport.status)}</span>
+                </div>
+                <div>
+                  <span className="font-medium">الأولوية:</span>
+                  <span className="mr-2">{getPriorityText(selectedReport.priority)}</span>
+                </div>
+                <div>
+                  <span className="font-medium">التقدم:</span>
+                  <span className="mr-2">{selectedReport.progress}%</span>
+                </div>
+                <div>
+                  <span className="font-medium">تاريخ الإنشاء:</span>
+                  <span className="mr-2">{new Date(selectedReport.createdAt).toLocaleDateString('ar-SA')}</span>
+                </div>
+                {selectedReport.dueDate && (
+                  <div>
+                    <span className="font-medium">موعد التسليم:</span>
+                    <span className="mr-2">{new Date(selectedReport.dueDate).toLocaleDateString('ar-SA')}</span>
+                  </div>
+                )}
               </div>
 
-              <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-                  <TabsTrigger value="metrics">المقاييس</TabsTrigger>
-                  <TabsTrigger value="details">التفاصيل</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">معلومات التقرير</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <span className="text-gray-500">الوصف:</span>
-                          <p className="mt-1">{selectedReport.description}</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-gray-500">النوع:</span>
-                            <Badge className={cn("mt-1", getTypeColor(selectedReport.type))}>
-                              {getTypeText(selectedReport.type)}
-                            </Badge>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">الحالة:</span>
-                            <Badge className={cn("mt-1", getStatusColor(selectedReport.status))}>
-                              {getStatusText(selectedReport.status)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-gray-500">المنشئ:</span>
-                            <div className="font-medium">{selectedReport.createdBy}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">تاريخ الإنشاء:</span>
-                            <div className="font-medium">
-                              {new Date(selectedReport.createdAt).toLocaleDateString('ar-SA')}
-                            </div>
-                          </div>
-                        </div>
-                        {selectedReport.dueDate && (
-                          <div>
-                            <span className="text-gray-500">الأيام المتبقية:</span>
-                            <div className="font-medium text-lg">
-                              {getDaysUntilDue(selectedReport.dueDate)} يوم
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">إحصائيات التقرير</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-sm text-gray-600 mb-1">
-                            <span>التقدم</span>
-                            <span>{getProgressPercentage(selectedReport)}%</span>
-                          </div>
-                          <Progress value={getProgressPercentage(selectedReport)} className="h-3" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-gray-500">التحميلات:</span>
-                            <div className="font-medium text-lg">{selectedReport.downloadCount}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">حجم الملف:</span>
-                            <div className="font-medium">{formatFileSize(selectedReport.fileSize)}</div>
-                          </div>
-                        </div>
-                        {selectedReport.data.totalRecords > 0 && (
-                          <div>
-                            <span className="text-gray-500">السجلات المعالجة:</span>
-                            <div className="font-medium">
-                              {selectedReport.data.processedRecords} / {selectedReport.data.totalRecords}
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+              {selectedReport.fileUrl && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-2xl">{getFileTypeIcon(selectedReport.fileType)}</span>
+                  <div>
+                    <p className="font-medium">ملف التقرير</p>
+                    <p className="text-sm text-gray-600">{formatFileSize(selectedReport.fileSize || 0)}</p>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="metrics" className="space-y-4">
-                  {selectedReport.data.metrics.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {selectedReport.data.metrics.map((metric, index) => (
-                        <Card key={index}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium">{metric.name}</div>
-                                <div className="text-2xl font-bold">
-                                  {metric.value} {metric.unit}
-                                </div>
-                              </div>
-                              <div className={cn(
-                                "flex items-center gap-1 text-sm",
-                                metric.trend === 'up' ? 'text-green-600' :
-                                metric.trend === 'down' ? 'text-red-600' : 'text-gray-600'
-                              )}>
-                                <TrendingUp className={cn(
-                                  "h-4 w-4",
-                                  metric.trend === 'down' && "rotate-180"
-                                )} />
-                                {metric.change > 0 ? '+' : ''}{metric.change}%
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <Card>
-                      <CardContent className="p-6 text-center text-gray-500">
-                        لا توجد مقاييس متاحة لهذا التقرير
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="details" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">تفاصيل إضافية</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="text-gray-500">آخر تحديث:</span>
-                          <div className="font-medium">
-                            {new Date(selectedReport.updatedAt).toLocaleString('ar-SA')}
-                          </div>
-                        </div>
-                        {selectedReport.completedAt && (
-                          <div>
-                            <span className="text-gray-500">تاريخ الإكمال:</span>
-                            <div className="font-medium">
-                              {new Date(selectedReport.completedAt).toLocaleString('ar-SA')}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <span className="text-gray-500">العلامات:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {selectedReport.tags.map((tag, index) => (
-                            <Badge key={index} variant="secondary">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      {selectedReport.data.errors > 0 || selectedReport.data.warnings > 0 && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-gray-500">الأخطاء:</span>
-                            <div className="font-medium text-red-600">{selectedReport.data.errors}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">التحذيرات:</span>
-                            <div className="font-medium text-yellow-600">{selectedReport.data.warnings}</div>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadReport(selectedReport)}
+                    className="mr-auto"
+                  >
+                    <Download className="h-4 w-4 ml-1" />
+                    تحميل
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )
-} 
+}
