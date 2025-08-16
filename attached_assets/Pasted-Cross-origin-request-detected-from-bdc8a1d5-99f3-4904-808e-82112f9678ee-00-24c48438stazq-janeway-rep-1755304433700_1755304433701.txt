@@ -1,0 +1,60 @@
+Cross origin request detected from bdc8a1d5-99f3-4904-808e-82112f9678ee-00-24c48438stazq.janeway.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ⨯ ./app/api/advertisements/route.ts
+Module parse failed: Identifier 'NextResponse' has already been declared (82:9)
+|     }
+| }
+> import { NextResponse } from 'next/server';
+| import { prisma } from '@/lib/prisma';
+| import { getServerSession } from 'next-auth';
+
+Import trace for requested module:
+./app/api/advertisements/route.ts
+ ⨯ ./app/api/advertisements/route.ts
+Module parse failed: Identifier 'NextResponse' has already been declared (82:9)
+|     }
+| }
+> import { NextResponse } from 'next/server';
+| import { prisma } from '@/lib/prisma';
+| import { getServerSession } from 'next-auth';
+
+Import trace for requested module:
+./app/api/advertisements/route.ts
+ ⨯ ./app/api/advertisements/route.ts
+Module parse failed: Identifier 'NextResponse' has already been declared (82:9)
+|     }
+| }
+> import { NextResponse } from 'next/server';
+| import { prisma } from '@/lib/prisma';
+| import { getServerSession } from 'next-auth';
+
+Import trace for requested module:
+./app/api/advertisements/route.ts
+ ⨯ ./app/api/advertisements/route.ts
+Module parse failed: Identifier 'NextResponse' has already been declared (82:9)
+|     }
+| }
+> import { NextResponse } from 'next/server';
+| import { prisma } from '@/lib/prisma';
+| import { getServerSession } from 'next-auth';
+
+Import trace for requested module:
+./app/api/advertisements/route.ts
+ GET /_next/static/webpack/ded763581f54fabb.webpack.hot-update.json 500 in 32231ms
+ GET /_next/static/webpack/ded763581f54fabb.webpack.hot-update.json 500 in 31554ms
+ GET /api/advertisements 500 in 36267ms
+ GET /api/advertisements 500 in 35729ms
+ GET / 500 in 4508ms
+ GET / 500 in 4507ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 118ms
+ GET / 500 in 122ms
+ GET / 500 in 95ms
+ GET / 500 in 103ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/home/runner/workspace/.next/cache/webpack/client-development-fallback/0.pack.gz'
+ ✓ Compiled /_error in 1562ms (606 modules)
+ GET / 500 in 39ms
+ GET / 500 in 31ms
