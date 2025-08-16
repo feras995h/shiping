@@ -4,21 +4,23 @@ import { useState, useEffect, useCallback } from "react"
 import { Shield, Users, Building, ArrowRight, DollarSign } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { AdvertisementSlider } from "@/components/shared/advertisement-slider"
+
 
 // تحسين الأداء باستخدام التحميل الكسلي للصور
 const OptimizedImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
-  
+
   useEffect(() => {
     const img = new Image()
     img.onload = () => setLoaded(true)
     img.onerror = () => setError(true)
     img.src = src
   }, [src])
-  
+
   if (error) return <div className={`bg-gray-200 ${className}`}></div>
-  
+
   return (
     <div className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
       {loaded && <img src={src} alt={alt} className={className} />}
@@ -60,12 +62,12 @@ export default function HomePage() {
       features: ["تتبع الشحنات", "عرض الفواتير", "طلب خدمات جديدة", "التواصل مع الدعم"],
     },
   ], [])
-  
+
   // استخدام useCallback لتجنب إعادة إنشاء الدالة في كل مرة
   const handleLogin = useCallback(() => {
     window.location.href = "/auth/login"
   }, [])
-  
+
   // استخدام useCallback لتجنب إعادة إنشاء الدالة في كل مرة
   const handleLearnMore = useCallback(() => {
     window.location.href = "/about"
@@ -93,6 +95,19 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Advertisement Slider */}
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          <AdvertisementSlider 
+            className="mb-8"
+            autoPlay={true}
+            interval={7000}
+            showDots={true}
+            showArrows={true}
+          />
+        </div>
+      </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">

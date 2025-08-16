@@ -30,6 +30,7 @@ const enhancedAdminModules: DashboardModule[] = [
     color: "from-indigo-400 to-indigo-600",
     items: [
       { name: "إعدادات الموقع", href: "/admin/settings", icon: Wrench },
+      { name: "إدارة الإعلانات", href: "/employee/advertisements", icon: Wrench },
       { name: "المستخدمون والصلاحيات", href: "/admin/users", icon: Key },
       { name: "الأدوار والصلاحيات", href: "/admin/roles", icon: Shield },
       { name: "الخوادم والتكاملات", href: "/admin/integrations", icon: Server },

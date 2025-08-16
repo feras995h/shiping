@@ -91,8 +91,8 @@ const enhancedEmployeeModules: DashboardModule[] = [
     color: "from-purple-400 to-purple-600",
     items: [
       { name: "الملف الشخصي", href: "/employee/profile", icon: User },
-      { name: "الإعدادات", href: "/employee/settings", icon: Settings },
-      { name: "الصلاحيات", href: "/employee/permissions", icon: Shield },
+      { name: "إدارة الإعلانات", href: "/employee/advertisements", icon: Settings },
+      { name: "الدعم الفني", href: "/employee/support", icon: Settings },
       { name: "التدريب", href: "/employee/training", icon: BookOpen },
       { name: "المساعدة", href: "/employee/help", icon: HelpCircle },
     ],

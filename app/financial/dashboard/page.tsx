@@ -7,11 +7,11 @@ import { usePathname } from "next/navigation"
 import {
   DollarSign, TrendingUp, TrendingDown, BarChart3, PieChart, FileText, Calculator,
   CreditCard, Banknote, Receipt, AlertCircle, CheckCircle, Users, MonitorSpeaker,
-  Building, ArrowUpRight, ArrowDownRight, BookOpen, Database, Package, Briefcase, 
-  Wallet, Globe, Shield, Ship, Target, Building2, Home, Bell, User, LogOut, Menu, 
+  Building, ArrowUpRight, ArrowDownRight, BookOpen, Database, Package, Briefcase,
+  Wallet, Globe, Shield, Ship, Target, Building2, Home, Bell, User, LogOut, Menu,
   Settings, Sparkles, Plus, Search, Clock, UserCheck, ClipboardList, Archive,
   Calendar, Percent, HandCoins, Coins, ArrowLeftRight, Eye, Filter, BarChart2,
-  CandlestickChart, Activity, TrendingDownIcon, TrendingUpIcon, UserCog, 
+  CandlestickChart, Activity, TrendingDownIcon, TrendingUpIcon, UserCog,
   FolderOpen, FileSpreadsheet, Inbox, PiggyBank, Shuffle, RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
+import { AdvertisementSlider } from "@/components/shared/advertisement-slider"
+import { UnifiedDashboard, type DashboardModule, type KPICard, type QuickAction, type ReportCard } from "@/components/shared/unified-dashboard"
 import { useGlStore } from "@/lib/gl-store"
 import { useGlTransactions } from "@/lib/gl-transactions"
 import FinancialAlertsPanel from "@/components/financial/financial-alerts-panel"
@@ -112,14 +114,14 @@ export default function FinancialDashboardPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [activeMegaTab, setActiveMegaTab] = useState("الأساسية")
   const pathname = usePathname()
-  
+
   const gl = useGlStore()
   const tx = useGlTransactions()
-  
+
   useEffect(() => {
     gl.initializeChartIfEmpty()
   }, [])
-  
+
   const balances = tx.computeBalances()
   const { revenueTotal, expenseTotal, cashLikeTotal } = useMemo(() => {
     let revenue = 0
@@ -134,9 +136,9 @@ export default function FinancialDashboardPage() {
     }
     return { revenueTotal: Math.max(0, revenue), expenseTotal: Math.max(0, expense), cashLikeTotal: cashLike }
   }, [gl.accounts, balances])
-  
+
   const netProfit = revenueTotal - expenseTotal
-  
+
   const financialStats = [
     { title: 'إجمالي الإيرادات اليومية', value: revenueTotal.toLocaleString(), currency: 'د.ل', change: '+12.5%', changeType: 'positive', icon: TrendingUp, color: 'text-emerald-600' },
     { title: 'إجمالي المصروفات اليومية', value: expenseTotal.toLocaleString(), currency: 'د.ل', change: '-8.3%', changeType: 'negative', icon: TrendingDown, color: 'text-red-500' },
@@ -147,7 +149,7 @@ export default function FinancialDashboardPage() {
     { title: 'إجمالي الإيرادات الشهرية', value: (revenueTotal * 30).toLocaleString(), currency: 'د.ل', change: '+18.7%', changeType: 'positive', icon: BarChart2, color: 'text-green-600' },
     { title: 'صافي الربح الشهري', value: (netProfit * 30).toLocaleString(), currency: 'د.ل', change: netProfit >= 0 ? '+15.3%' : '-5.2%', changeType: netProfit >= 0 ? 'positive' : 'negative', icon: DollarSign, color: 'text-amber-600' },
   ]
-   
+
   const financialAlerts = [
     {
       type: "success",
@@ -494,6 +496,17 @@ export default function FinancialDashboardPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">
+            {/* Slider for Advertisements */}
+            <div className="container mx-auto px-4">
+              <AdvertisementSlider
+                className="mb-6"
+                autoPlay={true}
+                interval={8000}
+                showDots={true}
+                showArrows={true}
+              />
+            </div>
+
             {/* Advanced KPIs */}
             <AdvancedKPIGrid
               kpis={[
@@ -827,7 +840,7 @@ export default function FinancialDashboardPage() {
                       عرض طريقة الدفع
                     </Link>
                   </Button>
-                  
+
                   <div className="text-xs font-semibold text-emerald-700 mb-2 mt-4">المدفوعات:</div>
                   <Button variant="outline" size="sm" className="w-full justify-start hover:bg-emerald-100" asChild>
                     <Link href="/reports/payments/period" className="flex items-center">
@@ -1004,7 +1017,7 @@ export default function FinancialDashboardPage() {
                       تصدير Excel
                     </Button>
                   </div>
-                  
+
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -1029,8 +1042,8 @@ export default function FinancialDashboardPage() {
                             <td className="py-2 text-xs">{row.due}</td>
                             <td className="py-2">
                               <span className={`px-2 py-1 rounded text-xs ${
-                                row.overdue ? 'bg-red-200 text-red-900' : 
-                                row.status === 'قريب الاستحقاق' ? 'bg-amber-200 text-amber-900' : 
+                                row.overdue ? 'bg-red-200 text-red-900' :
+                                row.status === 'قريب الاستحقاق' ? 'bg-amber-200 text-amber-900' :
                                 'bg-green-200 text-green-900'
                               }`}>
                                 {row.status}
@@ -1092,20 +1105,20 @@ export default function FinancialDashboardPage() {
                       <Link href="/financial/debtors/statement" className="flex items-center">
                         <FileText className="h-4 w-4 ml-2 text-amber-600" />
                         كشف حساب تفصيلي (مالي + تسليم)
-                    </Link>
-                  </Button>
+                      </Link>
+                    </Button>
                     <Button variant="outline" className="w-full justify-start hover:bg-amber-100" asChild>
                       <Link href="/financial/debtors/payment-tracking" className="flex items-center">
                         <Clock className="h-4 w-4 ml-2 text-amber-600" />
                         تتبع تواريخ وطرق السداد
-                    </Link>
-                  </Button>
+                      </Link>
+                    </Button>
                     <Button variant="outline" className="w-full justify-start hover:bg-amber-100" asChild>
                       <Link href="/financial/debtors/alerts" className="flex items-center">
                         <Bell className="h-4 w-4 ml-2 text-amber-600" />
                         تنبيهات مواعيد الاستحقاق
-                    </Link>
-                  </Button>
+                      </Link>
+                    </Button>
                     <Button variant="outline" className="w-full justify-start hover:bg-amber-100" asChild>
                       <Link href="/reports/collection-analysis" className="flex items-center">
                         <BarChart2 className="h-4 w-4 ml-2 text-amber-600" />
@@ -1123,20 +1136,20 @@ export default function FinancialDashboardPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Advances Management */}
               <Card className="bg-cyan-50/50 backdrop-blur-sm border border-cyan-200/60">
-              <CardHeader>
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-cyan-700">
                     <HandCoins className="h-5 w-5 text-cyan-600" />
                     إدارة العهد المالية
-                </CardTitle>
+                  </CardTitle>
                   <CardDescription>
                     تسجيل ومتابعة العهد للموظفين والفروع
                   </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2 flex-wrap">
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2 flex-wrap">
                     <Button className="bg-cyan-600 hover:bg-cyan-700 text-white" asChild>
                       <Link href="/financial/advances">إدارة العهد</Link>
-                  </Button>
+                    </Button>
                     <Button variant="outline" className="hover:bg-cyan-100">
                       <Plus className="h-4 w-4 ml-2" />
                       إضافة عهدة
@@ -1149,47 +1162,47 @@ export default function FinancialDashboardPage() {
                       <Archive className="h-4 w-4 ml-2" />
                       تصفية
                     </Button>
-                </div>
-                  
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
                         <tr className="text-right border-b border-cyan-200">
                           <th className="py-2 text-xs">المستفيد</th>
                           <th className="py-2 text-xs">الغرض</th>
                           <th className="py-2 text-xs">المبلغ</th>
                           <th className="py-2 text-xs">المتبقي</th>
                           <th className="py-2 text-xs">الحالة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
                           { beneficiary: "أحمد علي", purpose: "مصروفات سفر", amount: "5,000", remaining: "2,300", status: "قيد التسوية" },
                           { beneficiary: "فرع الزاوية", purpose: "مصروفات تشغيلية", amount: "15,000", remaining: "8,500", status: "نشطة" },
                           { beneficiary: "محمود سالم", purpose: "صيانة مركبات", amount: "3,500", remaining: "0", status: "مصفاة" },
                           { beneficiary: "سارة أحمد", purpose: "مشتريات مكتبية", amount: "1,200", remaining: "450", status: "قيد التسوية" },
-                      ].map((row, i) => (
+                        ].map((row, i) => (
                           <tr key={i} className="border-b border-cyan-100 hover:bg-cyan-50/30">
                             <td className="py-2 text-xs font-medium">{row.beneficiary}</td>
                             <td className="py-2 text-xs">{row.purpose}</td>
                             <td className="py-2 text-xs font-mono text-cyan-700">{row.amount} د.ل</td>
                             <td className="py-2 text-xs font-mono text-amber-700">{row.remaining} د.ل</td>
-                          <td className="py-2">
+                            <td className="py-2">
                               <span className={`px-2 py-1 rounded text-xs ${
-                                row.status === 'مصفاة' ? 'bg-green-200 text-green-900' : 
-                                row.status === 'نشطة' ? 'bg-blue-200 text-blue-900' : 
+                                row.status === 'مصفاة' ? 'bg-green-200 text-green-900' :
+                                row.status === 'نشطة' ? 'bg-blue-200 text-blue-900' :
                                 'bg-amber-200 text-amber-900'
                               }`}>
                                 {row.status}
                               </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Advances Features */}
               <Card className="bg-teal-50/50 backdrop-blur-sm border border-teal-200/60">
@@ -1266,11 +1279,11 @@ export default function FinancialDashboardPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Administrative Section */}
               <Card className="bg-purple-50/50 backdrop-blur-sm border border-purple-200/60">
-              <CardHeader>
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-purple-700">
                     <UserCog className="h-5 w-5 text-purple-600" />
                     الجانب الإداري للموظفين
-                </CardTitle>
+                  </CardTitle>
                   <CardDescription>
                     إدارة البيانات الشخصية والعقود والمستندات
                   </CardDescription>
@@ -1421,7 +1434,7 @@ export default function FinancialDashboardPage() {
                     تصدير Excel
                   </Button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1454,8 +1467,8 @@ export default function FinancialDashboardPage() {
                           <td className="py-2 text-xs">{row.contract}</td>
                           <td className="py-2">
                             <span className={`px-2 py-1 rounded text-xs ${
-                              row.status === 'نشط' ? 'bg-green-200 text-green-900' : 
-                              row.status === 'إجازة' ? 'bg-blue-200 text-blue-900' : 
+                              row.status === 'نشط' ? 'bg-green-200 text-green-900' :
+                              row.status === 'إجازة' ? 'bg-blue-200 text-blue-900' :
                               'bg-gray-200 text-gray-900'
                             }`}>
                               {row.status}
@@ -1619,7 +1632,7 @@ export default function FinancialDashboardPage() {
                     تصدير
                   </Button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1642,7 +1655,7 @@ export default function FinancialDashboardPage() {
                         { item: "علامات الشحن والعناوين", qty: "75", cost: "15", sale: "25", profit: "10", total: "1,125", status: "متوفر" },
                       ].map((row, i) => (
                         <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50/50 ${
-                          row.status === 'نفذ المخزون' ? 'bg-red-50/50' : 
+                          row.status === 'نفذ المخزون' ? 'bg-red-50/50' :
                           row.status === 'مخزون منخفض' ? 'bg-amber-50/50' : ''
                         }`}>
                           <td className="py-2 text-xs font-medium">{row.item}</td>
@@ -1653,8 +1666,8 @@ export default function FinancialDashboardPage() {
                           <td className="py-2 text-xs font-mono text-slate-700">{row.total} د.ل</td>
                           <td className="py-2">
                             <span className={`px-2 py-1 rounded text-xs ${
-                              row.status === 'متوفر' ? 'bg-green-200 text-green-900' : 
-                              row.status === 'مخزون منخفض' ? 'bg-amber-200 text-amber-900' : 
+                              row.status === 'متوفر' ? 'bg-green-200 text-green-900' :
+                              row.status === 'مخزون منخفض' ? 'bg-amber-200 text-amber-900' :
                               'bg-red-200 text-red-900'
                             }`}>
                               {row.status}

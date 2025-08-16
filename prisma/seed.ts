@@ -36,7 +36,7 @@ async function main() {
   // إنشاء المستخدم الإداري
   const hashedPassword = await bcrypt.hash('admin123', 12);
 
-  const admin = await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: 'admin@company.ly' },
     update: {},
     create: {
@@ -48,7 +48,21 @@ async function main() {
     }
   });
 
-  console.log('✅ تم إنشاء المستخدم الإداري');
+  // إنشاء مستخدم موظف تجريبي
+  const hashedEmployeePassword = await bcrypt.hash('employee123', 12);
+  const employeeUser = await prisma.user.upsert({
+    where: { email: 'employee@company.ly' },
+    update: {},
+    create: {
+      email: 'employee@company.ly',
+      name: 'موظف تجريبي',
+      password: hashedEmployeePassword,
+      role: 'EMPLOYEE',
+      isActive: true
+    }
+  });
+
+  console.log('✅ تم إنشاء المستخدم الإداري والموظف');
 
   // إنشاء دليل الحسابات الأساسي
   const assetAccount = await prisma.glAccount.upsert({
@@ -132,7 +146,7 @@ async function main() {
       value: 'شركة الشحن الدولي',
       description: 'اسم الشركة',
       category: 'general',
-      createdBy: admin.id
+      createdBy: adminUser.id
     }
   });
 
@@ -144,11 +158,54 @@ async function main() {
       value: usd.id,
       description: 'العملة الافتراضية',
       category: 'financial',
-      createdBy: admin.id
+      createdBy: adminUser.id
     }
   });
 
   console.log('✅ تم إنشاء إعدادات النظام');
+
+  // إنشاء إعلانات تجريبية
+  const advertisements = await prisma.advertisement.createMany({
+    data: [
+      {
+        title: "عروض خاصة على الشحن الدولي",
+        description: "خصم 20% على جميع خدمات الشحن الدولي",
+        content: "استفد من عروضنا الخاصة على الشحن الدولي مع خصم يصل إلى 20% على جميع الوجهات. العرض ساري حتى نهاية الشهر.",
+        imageUrl: "/placeholder.jpg",
+        linkUrl: "/shipments",
+        isActive: true,
+        order: 1,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 يوم من الآن
+        createdBy: adminUser.id
+      },
+      {
+        title: "نظام إدارة مالية متطور",
+        description: "إدارة شاملة للحسابات والمعاملات المالية",
+        content: "نظام محاسبي متكامل يوفر إدارة شاملة للحسابات، التقارير المالية، وتتبع المعاملات بدقة عالية.",
+        imageUrl: "/placeholder.jpg",
+        linkUrl: "/financial/dashboard",
+        isActive: true,
+        order: 2,
+        startDate: new Date(),
+        createdBy: adminUser.id
+      },
+      {
+        title: "خدمة العملاء على مدار الساعة",
+        description: "دعم فني متواصل لضمان أفضل خدمة",
+        content: "فريق الدعم الفني متاح على مدار الساعة لمساعدتكم في جميع استفساراتكم ومتطلباتكم.",
+        imageUrl: "/placeholder.jpg",
+        linkUrl: "/client/chat",
+        isActive: true,
+        order: 3,
+        startDate: new Date(),
+        createdBy: employeeUser.id
+      }
+    ]
+  })
+
+  console.log('تم إنشاء البيانات التجريبية بنجاح!')
+  console.log(`تم إنشاء ${advertisements.count} إعلان تجريبي`)
 
   console.log('🎉 تم إكمال عملية البذر بنجاح!');
 }
