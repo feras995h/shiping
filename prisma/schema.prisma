@@ -720,7 +720,8 @@ model Advertisement {
   priority    Int               @default(0)
   startDate   DateTime?
   endDate     DateTime?
-  targetRole  Role?
+  targetRole  Role?            @relation(fields: [targetRoleId], references: [id])
+  targetRoleId String?
   createdBy   String
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -1122,6 +1123,7 @@ model Role {
   // Relations
   user        User     @relation(fields: [createdBy], references: [id])
   permissions RolePermission[]
+  advertisements Advertisement[]
 
   @@index([name])
   @@map("roles")
