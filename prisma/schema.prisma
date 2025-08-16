@@ -146,7 +146,7 @@ model User {
   evaluations   Evaluation[]  @relation("EvaluationCreator")
   evaluationEvaluator Evaluation[] @relation("EvaluationEvaluator")
   goals         Goal[]
-  systemSettings SystemSetting[]
+  systemSettings SystemSettings[]
   securityLogs  SecurityLog[]
   alerts        Alert[]
   reports       Report[]
@@ -697,8 +697,12 @@ model SystemSettings {
   key         String   @unique
   value       String
   description String?
+  createdBy   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [createdBy], references: [id])
 
   @@map("system_settings")
 }
