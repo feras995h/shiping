@@ -40,6 +40,8 @@ import {
   Zap,
   TestTube,
   Bug,
+  Activity,
+  Monitor,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,6 +70,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { AdvertisementSlider } from "@/components/shared/advertisement-slider"
+import { AdvertisementBanner } from "@/components/shared/advertisement-banner"
 
 const navigationMenus = [
   {
@@ -151,6 +155,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
 
+  // Dummy session object for demonstration purposes. Replace with actual auth logic.
+  const session = {
+    user: {
+      role: 'ADMIN', // Or 'USER', 'MANAGER' etc.
+      name: 'Ahmed Mohamed',
+      email: 'ahmed.mohamed@example.com'
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30" dir="rtl">
       {/* Top Navigation */}
@@ -213,8 +226,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       <span className="text-xs font-bold text-white">أ</span>
                     </div>
                     <div className="hidden md:flex flex-col leading-none text-right">
-                      <span className="text-xs font-bold text-slate-800">أحمد محمد</span>
-                      <span className="text-[10px] text-gold-700">المدير المالي</span>
+                      <span className="text-xs font-bold text-slate-800">{session.user.name}</span>
+                      <span className="text-[10px] text-gold-700">{session.user.role}</span>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
@@ -293,7 +306,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-6 animate-fade-in">{children}</main>
+      <main className="flex-1 overflow-auto bg-gray-50">
+        {/* بانر الإعلانات */}
+        <div className="p-4 pb-0">
+          <AdvertisementBanner type="BANNER" />
+        </div>
+
+        <div className="p-6">
+          {children}
+        </div>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-gold-200/50 bg-gradient-to-r from-slate-50 to-gold-50/30 mt-16">

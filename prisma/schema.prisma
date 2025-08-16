@@ -164,6 +164,7 @@ model User {
 
   sessions      Session[]
   accounts      Account[]
+  advertisements    Advertisement[]
 
   @@map("users")
 }
@@ -702,25 +703,31 @@ model SystemSettings {
   @@map("system_settings")
 }
 
+// ===== الإعلانات =====
 model Advertisement {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   title       String
   description String?
   content     String
   imageUrl    String?
   linkUrl     String?
-  isActive    Boolean  @default(false)
-  order       Int      @default(0)
+  type        AdvertisementType @default(BANNER)
+  status      AdvertisementStatus @default(DRAFT)
+  priority    Int               @default(0)
   startDate   DateTime?
   endDate     DateTime?
+  targetRole  Role?
   createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  creator     User              @relation(fields: [createdBy], references: [id])
 
   @@map("advertisements")
 }
 
-// إدارة سجلات الأمان
+// ===== سجلات الأمان والتنبيهات والتقارير =====
 model SecurityLog {
   id          String   @id @default(cuid())
   userId      String
@@ -914,6 +921,21 @@ enum Priority {
   HIGH
   URGENT
 } 
+
+// ===== الإعلانات (Enums) =====
+enum AdvertisementType {
+  BANNER
+  POPUP
+  SLIDER
+  ANNOUNCEMENT
+}
+
+enum AdvertisementStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
 
 // ===== سجل التدقيق (Audit Trail) =====
 enum AuditAction {

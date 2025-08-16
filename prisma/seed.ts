@@ -165,49 +165,56 @@ async function main() {
   console.log('✅ تم إنشاء إعدادات النظام');
 
   // إنشاء إعلانات تجريبية
-  const advertisements = await prisma.advertisement.createMany({
-    data: [
-      {
-        title: "عروض خاصة على الشحن الدولي",
-        description: "خصم 20% على جميع خدمات الشحن الدولي",
-        content: "استفد من عروضنا الخاصة على الشحن الدولي مع خصم يصل إلى 20% على جميع الوجهات. العرض ساري حتى نهاية الشهر.",
-        imageUrl: "/placeholder.jpg",
-        linkUrl: "/shipments",
-        isActive: true,
-        order: 1,
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 يوم من الآن
+  const advertisements = await Promise.all([
+    prisma.advertisement.create({
+      data: {
+        title: 'مرحباً بكم في نظام إدارة الشحن',
+        content: 'نظام متكامل لإدارة عمليات الشحن والشؤون المالية مع تتبع دقيق ومراقبة شاملة',
+        type: 'SLIDER',
+        status: 'ACTIVE',
+        priority: 10,
+        imageUrl: '/placeholder.jpg',
+        linkUrl: '/about',
         createdBy: adminUser.id
-      },
-      {
-        title: "نظام إدارة مالية متطور",
-        description: "إدارة شاملة للحسابات والمعاملات المالية",
-        content: "نظام محاسبي متكامل يوفر إدارة شاملة للحسابات، التقارير المالية، وتتبع المعاملات بدقة عالية.",
-        imageUrl: "/placeholder.jpg",
-        linkUrl: "/financial/dashboard",
-        isActive: true,
-        order: 2,
-        startDate: new Date(),
-        createdBy: adminUser.id
-      },
-      {
-        title: "خدمة العملاء على مدار الساعة",
-        description: "دعم فني متواصل لضمان أفضل خدمة",
-        content: "فريق الدعم الفني متاح على مدار الساعة لمساعدتكم في جميع استفساراتكم ومتطلباتكم.",
-        imageUrl: "/placeholder.jpg",
-        linkUrl: "/client/chat",
-        isActive: true,
-        order: 3,
-        startDate: new Date(),
-        createdBy: employeeUser.id
       }
-    ]
-  })
+    }),
+    prisma.advertisement.create({
+      data: {
+        title: 'خصم خاص للعملاء الجدد',
+        content: 'احصل على خصم 20% على أول شحنة لك معنا',
+        type: 'BANNER',
+        status: 'ACTIVE',
+        priority: 8,
+        targetRole: 'CLIENT',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 يوم
+        createdBy: adminUser.id
+      }
+    }),
+    prisma.advertisement.create({
+      data: {
+        title: 'تحديث مهم على النظام',
+        content: 'تم إضافة ميزات جديدة لتحسين تجربة المستخدم',
+        type: 'ANNOUNCEMENT',
+        status: 'ACTIVE',
+        priority: 5,
+        createdBy: adminUser.id
+      }
+    }),
+    prisma.advertisement.create({
+      data: {
+        title: 'اجتماع الفريق الأسبوعي',
+        content: 'اجتماع فريق العمل يوم الأحد الساعة 10 صباحاً',
+        type: 'BANNER',
+        status: 'ACTIVE',
+        priority: 3,
+        targetRole: 'EMPLOYEE',
+        createdBy: adminUser.id
+      }
+    })
+  ]);
 
-  console.log('تم إنشاء البيانات التجريبية بنجاح!')
-  console.log(`تم إنشاء ${advertisements.count} إعلان تجريبي`)
-
-  console.log('🎉 تم إكمال عملية البذر بنجاح!');
+  console.log('تم إنشاء بيانات التجربة بنجاح');
 }
 
 main()
